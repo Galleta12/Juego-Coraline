@@ -76,6 +76,45 @@ export const cardArtKeys = (): string[] =>
     .map((c) => c.key)
     .filter(hasArt);
 
+/**
+ * Corte de una escena a otra, con su sonido y su bajada de volumen.
+ *
+ * Antes cada escena hacia su propio `fadeOut` y su `scene.start`, en
+ * silencio absoluto: la pantalla se ponia negra y aparecia otra cosa, y
+ * eso no se lee como una transicion — se lee como que el juego se colgo
+ * un momento. Un corte tiene que SONAR para que se note que es a
+ * proposito.
+ *
+ * Lo que hace, en orden:
+ *
+ *   1. El aire de algo que sale de plano (`whoosh`).
+ *   2. La cancion se aparta a un tercio de volumen, sin cortarse: es lo
+ *      que da la sensacion de que algo va a pasar.
+ *   3. A mitad del fundido, el golpe seco de la puerta que se cierra
+ *      detras (`thud`).
+ *   4. Al terminar, la cancion vuelve a su sitio y entra la escena
+ *      nueva. El volumen se devuelve ANTES de arrancarla, para que una
+ *      escena que quiera su propia mezcla — el calendario la baja —
+ *      parta siempre del mismo punto.
+ */
+export function cutTo(
+  scene: Phaser.Scene,
+  next: string,
+  opts: { fadeMs?: number; duck?: boolean } = {},
+): void {
+  const { fadeMs = 620, duck = true } = opts;
+
+  audio.sfx.whoosh();
+  if (duck) audio.duckMusic(true, 200, 0.35);
+  scene.time.delayedCall(Math.round(fadeMs * 0.45), () => audio.sfx.thud());
+
+  scene.cameras.main.fadeOut(fadeMs, 8, 6, 14);
+  scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+    if (duck) audio.duckMusic(false, 260);
+    scene.scene.start(next);
+  });
+}
+
 /** Prefijo de las texturas de degradado, una por color de `bg`. */
 const BG_TEX_PREFIX = "gfx-card-bg-";
 
@@ -131,9 +170,15 @@ export function showCard(
 
   // Un volumen un poco mas bajo mientras dura la carta: la pausa se
   // siente como tension, no como una pantalla de carga cualquiera. La
-  // que sigue a la pelea del jefe queda fuera: ahi ya suena en silencio
-  // (la musica de la victoria es "none"), asi que no hay nada que bajar.
-  if (duckAudio) audio.duckMusic(true);
+  // cancion NO se cambia — cada corte con su propia pista se notaba como
+  // un frenazo; lo que marca el corte son los efectos de aqui abajo.
+  if (duckAudio) audio.duckMusic(true, 260);
+
+  // El corte suena. Antes entraba en silencio absoluto y por eso se
+  // leia como una pantalla de carga: primero el aire de algo que entra,
+  // y a los dos tercios del recorrido el golpe de la lamina al plantarse.
+  audio.sfx.whoosh();
+  setTimeout(() => audio.sfx.thud(), 260);
 
   return new Promise<void>((resolve) => {
     const veil = scene.add
@@ -213,12 +258,35 @@ export function showCard(
         ease: "Sine.easeInOut",
       });
     }
+    // La lamina no aparece: LLEGA. Sube un poco al entrar, que es lo que
+    // separa "algo que se planta delante" de "algo que estaba ahi y se
+    // ha vuelto visible".
+    img.setY(GAME_HEIGHT / 2 + 26);
     scene.tweens.add({
       targets: img,
       alpha: 1,
       scale: fit,
+      y: GAME_HEIGHT / 2,
       duration: IN_MS,
-      ease: "Quad.easeOut",
+      ease: "Back.easeOut",
+    });
+
+    // Y un brillo que la recorre justo cuando suena el golpe, como la luz
+    // pasando por encima de una lamina que acaba de caer en su sitio.
+    const sweep = scene.add
+      .rectangle(-160, GAME_HEIGHT / 2, 150, GAME_HEIGHT * 1.6, 0xffffff, 0.16)
+      .setDepth(901.5)
+      .setScrollFactor(0)
+      .setAngle(14)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    bits.push(sweep);
+    scene.tweens.add({
+      targets: sweep,
+      x: GAME_WIDTH + 160,
+      duration: 620,
+      delay: 240,
+      ease: "Quad.easeInOut",
+      onComplete: () => sweep.setAlpha(0),
     });
     scene.tweens.add({
       targets: halo,

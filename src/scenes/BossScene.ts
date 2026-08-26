@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { reportProgress } from "@/systems/Api";
 import { COFFEE, GAME_HEIGHT, GAME_WIDTH, HEALTH, TILE } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
@@ -854,6 +855,7 @@ export class BossScene extends Phaser.Scene {
 
     this.hud?.clearObjective();
     setState({ bossDefeated: true, diamondCollected: true });
+    void reportProgress("boss");
 
     // La barra vacia colgada en pantalla queda como un resto del HUD.
     this.tweens.add({
@@ -881,7 +883,19 @@ export class BossScene extends Phaser.Scene {
   private async celebrate(): Promise<void> {
     flash(this, 0xffe9a8, 900);
     audio.sfx.victory();
-    void audio.playMusic("victory");
+
+    // La musica de la pelea se corta EN SECO, un segundo de silencio, y
+    // entonces entra la cancion del final.
+    //
+    // El silencio es el que hace el efecto: sin el, la cancion se
+    // solapaba con la pista de la jefa en un fundido cruzado y el cambio
+    // no se notaba. Y arrancandola aqui — y no dos pantallas mas
+    // adelante — la cancion acompaña ya toda la celebracion, la carta y
+    // todo el tramo final sin volver a empezar nunca (misma clave de
+    // pista en todas esas escenas: `playMusic` no la reinicia).
+    audio.stopMusic();
+    this.time.delayedCall(1000, () => void audio.playMusic("finale"));
+
     this.grade.to("victory", 1400);
     this.cameras.main.shake(400, 0.006);
 
@@ -901,9 +915,12 @@ export class BossScene extends Phaser.Scene {
     this.scene.stop(S.Hud);
 
     // La carta del jefe cierra la pelea, todavia en silencio.
-    // Excepcion: aqui NO se baja el volumen. Ya suena en silencio (la
-    // pista de "victory" es "none"), y bajar algo que ya esta callado
-    // no aporta nada.
+    // Aqui NO se baja el volumen, y es la unica carta que se libra.
+    //
+    // La cancion del final acaba de entrar hace unos segundos, despues
+    // del silencio que sigue a la pelea. Agacharla justo ahora se oiria
+    // como que algo va mal con el audio: es su momento de arrancar, no
+    // de apartarse. Los efectos del corte si suenan, como en todas.
     await showCard(this, "boss", { holdMs: 2200, skippable: false, duckAudio: false });
 
     this.cameras.main.fadeOut(600, 8, 6, 14);

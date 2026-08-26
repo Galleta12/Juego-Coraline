@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { cutTo } from "@/ui/Transition";
 import { GAME_HEIGHT, GAME_WIDTH, SAFE } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
@@ -164,7 +165,6 @@ export class StorybookScene extends Phaser.Scene {
       duration: 700,
       ease: "Quad.easeIn",
     });
-    this.cameras.main.fadeOut(800, 8, 6, 14);
-    this.time.delayedCall(900, () => this.scene.start(S.CharacterSelect));
+    cutTo(this, S.CharacterSelect, { fadeMs: 800 });
   }
 }

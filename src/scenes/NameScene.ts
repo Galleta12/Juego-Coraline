@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+import { cutTo } from "@/ui/Transition";
+import { reportProgress } from "@/systems/Api";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
@@ -89,6 +91,13 @@ export class NameScene extends Phaser.Scene {
       .setDepth(6);
     hint.setLetterSpacing(2);
 
+    // Se quita cualquier escucha anterior antes de poner el nuevo.
+    //
+    // Red de seguridad: si por lo que sea esta escena llega a montarse
+    // dos veces sin apagarse en medio, quedarian dos escuchas y cada
+    // letra se escribiria repetida. Empezando por borrar, montarla mil
+    // veces da igual — siempre queda uno.
+    this.input.keyboard?.removeAllListeners(Phaser.Input.Keyboard.Events.ANY_KEY_DOWN);
     this.input.keyboard?.on(Phaser.Input.Keyboard.Events.ANY_KEY_DOWN, (e: KeyboardEvent) =>
       this.onKey(e),
     );
@@ -220,10 +229,11 @@ export class NameScene extends Phaser.Scene {
     audio.sfx.uiConfirm();
     setState({ playerName: this.typed.trim() });
 
-    this.cameras.main.fadeOut(620, 8, 6, 14);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start(S.Storybook);
-    });
+    // El aviso sale DESPUES de guardar el nombre, para que el correo lo
+    // lleve. Sin `await`: si la red va lenta, el juego no la espera.
+    void reportProgress("name");
+
+    cutTo(this, S.Storybook, { fadeMs: 620 });
   }
 
   private reject(): void {

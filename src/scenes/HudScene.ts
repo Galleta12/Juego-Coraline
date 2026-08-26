@@ -3,6 +3,7 @@ import { COFFEE, GAME_WIDTH, SAFE } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
 import { ITEM, WEAPON, queue } from "@/systems/Art";
+import { audio } from "@/systems/AudioSystem";
 import { coffeeRemaining, getState } from "@/systems/GameState";
 import { label, shadow, title } from "@/ui/text";
 
@@ -175,6 +176,13 @@ export class HudScene extends Phaser.Scene {
   /** Aviso grande: objetivos, sucesos, remates. */
   announce(text: string, sub = "", durationMs = 2400, tint: number = INK.bone): void {
     this.bannerTimer?.remove();
+
+    // La cancion se aparta mientras el cartel esta en pantalla.
+    //
+    // Estos avisos son las frases que hay que leer si o si, y competian
+    // de tu a tu con la musica. Baja a dos tercios — no se va, solo deja
+    // sitio — y vuelve sola cuando el cartel se retira.
+    audio.duckMusic(true, 220);
     this.banner.setText(text).setTint(tint);
     this.bannerSub.setText(sub);
 
@@ -197,6 +205,7 @@ export class HudScene extends Phaser.Scene {
     });
 
     this.bannerTimer = this.time.delayedCall(durationMs, () => {
+      audio.duckMusic(false, 420);
       this.tweens.add({
         targets: [this.banner, this.bannerSub],
         alpha: 0,

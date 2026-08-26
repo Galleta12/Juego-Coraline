@@ -1202,8 +1202,8 @@
     },
     "screens/choice": {
       "path": "assets/art/screens/choice.webp",
-      "w": 1672,
-      "h": 941,
+      "w": 1536,
+      "h": 1024,
       "family": "screens"
     },
     "screens/gertrudis": {

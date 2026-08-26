@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+import { reportProgress } from "@/systems/Api";
+import type { ProgressEvent } from "@shared/contracts";
 import { COFFEE, GAME_HEIGHT, GAME_WIDTH, HEALTH, TILE } from "@/config/game";
 import { GRADES, INK } from "@/config/palette";
 import { S, type SceneKey } from "@/config/scenes";
@@ -83,6 +85,8 @@ export interface LevelConfig {
   withAltered: boolean;
   /** Carta de transicion que se ensena al terminar el nivel. */
   card?: CardKey;
+  /** Hito que se avisa por correo al salir por la puerta. */
+  progress?: ProgressEvent;
 }
 
 type LootKind = "cake" | "coffee";
@@ -606,12 +610,21 @@ export abstract class LevelScene extends Phaser.Scene {
     if (this.finished || !this.door) return;
     this.finished = true;
 
+    // La puerta suena a puerta, y encima el aire del corte: son dos
+    // cosas distintas — la cerradura y el tramo que se acaba — y juntas
+    // el cambio de escena se lee como un acontecimiento.
     audio.sfx.door();
+    this.time.delayedCall(180, () => audio.sfx.whoosh());
+    this.time.delayedCall(560, () => audio.sfx.chime());
     // Clavada, no solo sin controles: a partir de aqui `update` sale por
     // la primera linea y ya no corre ni `syncBody` ni la red que la
     // devuelve arriba si se sale del mapa (ver `Player.freeze`).
     this.player.freeze();
     this.hud?.clearObjective();
+    if (this.config.progress) {
+      const hito = this.config.progress;
+      void reportProgress(hito);
+    }
     burstAt(this, this.door.x, this.door.y - 40, 26, INK.gold);
     impactRing(this, this.door.x, this.door.y - 60, INK.gold, 180);
 

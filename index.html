@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Fran Coraline</title>
+<title>ayuda</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Una expedición minera cuestionablemente profesional.">
 <meta name="color-scheme" content="dark">
@@ -89,6 +89,63 @@
   button:focus-visible{outline:2px solid var(--diamond); outline-offset:3px}
   button[data-done]{border-color:var(--diamond); color:var(--diamond)}
 
+  /* Las dos salidas de la puerta de movil, una debajo de otra en
+     pantallas estrechas: en una sola fila el segundo boton — que es el
+     largo — se salia por el lado. */
+  .choices{display:flex; flex-wrap:wrap; gap:.8rem; justify-content:center}
+  /* La segunda opcion no compite con la primera: copiar el link es lo
+     que de verdad queremos que haga. */
+  .quiet{border-color:var(--dim); color:var(--dim); opacity:.75}
+  .quiet:hover{background:var(--dim); color:var(--void); opacity:1}
+
+  /* ── Calendario ──────────────────────────────────────────────────
+     Va en HTML de verdad, no dibujado en el lienzo. En el lienzo cada
+     casilla era un contenedor con su area de clic calculada a mano, y
+     eso trae problemas que aqui no existen: clics que no entran, celdas
+     que se agrandan y tapan a la vecina, listas que hay que recortar y
+     desplazar a mano. Un boton del navegador siempre se deja pulsar. */
+  #cal{
+    position:fixed; inset:0; z-index:8; display:none;
+    align-items:center; justify-content:center; padding:1.2rem;
+    background:rgba(8,6,14,.82); backdrop-filter:blur(2px);
+  }
+  #cal[data-on]{display:flex}
+  .cal-box{
+    background:#1b1a3a; border:2px solid var(--thread);
+    box-shadow:0 18px 60px rgba(0,0,0,.6);
+    padding:1.4rem 1.6rem; width:min(680px,96vw);
+    max-height:94vh; overflow:auto; text-align:center;
+  }
+  .cal-title{
+    font-family:var(--display); font-size:1.5rem; color:var(--bone);
+    margin:0 0 .2rem; letter-spacing:.04em;
+  }
+  .cal-sub{font-size:.86rem; color:var(--dim); margin:0 0 1rem}
+  .cal-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(86px,1fr));
+    gap:.5rem; margin:0 0 .4rem;
+  }
+  .cal-day, .cal-slot{
+    font-family:var(--body); font-size:.95rem; color:var(--bone);
+    background:#2f2657; border:1px solid #5f5090; padding:.6rem .4rem;
+    cursor:pointer; transition:background .14s, border-color .14s, transform .14s;
+  }
+  .cal-day:hover, .cal-slot:hover{background:#463a7a; transform:translateY(-2px)}
+  .cal-day[aria-pressed="true"]{
+    background:var(--gold); border-color:var(--gold); color:#241a06; font-weight:600;
+  }
+  .cal-day small{display:block; font-size:.7rem; opacity:.75; letter-spacing:.06em}
+  .cal-slots{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(76px,1fr));
+    gap:.45rem; margin:.2rem 0 0; max-height:34vh; overflow:auto; padding:.2rem;
+  }
+  .cal-step{margin:1.1rem 0 .3rem; border-top:1px dashed var(--thread); padding-top:1rem}
+  .cal-ask{font-family:var(--display); font-size:1.25rem; color:var(--gold); margin:0 0 .9rem}
+  .cal-actions{display:flex; gap:.8rem; justify-content:center; flex-wrap:wrap}
+  .cal-yes{border-color:var(--diamond); color:var(--diamond)}
+  .cal-yes:hover{background:var(--diamond); color:var(--void)}
+  .cal-hidden{display:none}
+
   @media (prefers-reduced-motion:reduce){
     .stitch::after{animation:none; transform:scaleX(1)}
     *{animation-duration:.01ms!important; transition-duration:.01ms!important}
@@ -107,14 +164,20 @@
   <p class="meta" id="bootmeta">Cargando equipo insuficiente…</p>
 </div>
 
+<!-- Calendario. Lo rellena src/ui/CalendarDom.ts; vacío hasta entonces. -->
+<div id="cal" role="dialog" aria-modal="true" aria-labelledby="caltitle"></div>
+
 <!-- Puerta de móvil: el juego necesita teclado y ratón -->
 <div class="gate" id="mobile" role="alertdialog" aria-labelledby="mtitle">
   <p class="eyebrow">Autoridad minera</p>
-  <p class="headline" id="mtitle">Esta aventura necesita teclado y mouse</p>
+  <p class="headline" id="mtitle">Esto se juega en PC</p>
   <div class="stitch" aria-hidden="true"></div>
-  <p class="body">Para una mejor experiencia, ábrela desde una computadora.</p>
-  <button id="copy" type="button">Copiar el link</button>
-  <p class="meta">Te esperamos. Tenemos tiempo.</p>
+  <p class="body">Necesita teclado y mouse, y se juega en pantalla completa. Copia el link y ábrelo en una computadora.</p>
+  <div class="choices">
+    <button id="copy" type="button">Copiar el link</button>
+    <button id="nope" type="button" class="quiet">No quiero jugar aquí</button>
+  </div>
+  <p class="meta" id="mmeta">Te esperamos. Tenemos tiempo.</p>
 </div>
 
 <script type="module">
@@ -142,6 +205,17 @@
       }
       btn.textContent = "Link copiado";
       btn.setAttribute("data-done", "");
+    });
+
+    // La otra salida. No lleva a ninguna parte a proposito: el juego
+    // necesita teclado y raton, asi que lo unico que puede hacer es
+    // decirlo con todas las letras en vez de dejar el boton muerto.
+    const nope = document.getElementById("nope");
+    nope.addEventListener("click", () => {
+      document.getElementById("mtitle").textContent = "Sorry, es solo para PC";
+      document.getElementById("mmeta").textContent =
+        "En serio. Copia el link y nos vemos allá.";
+      nope.remove();
     });
   } else {
     import("./src/main.ts").catch((err) => {

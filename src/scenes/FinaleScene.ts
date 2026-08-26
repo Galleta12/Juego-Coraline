@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { cutTo } from "@/ui/Transition";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
@@ -50,10 +51,7 @@ export class FinaleScene extends Phaser.Scene {
       await this.beat(key, i);
     }
 
-    this.cameras.main.fadeOut(700, 8, 6, 14);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start(S.Choice);
-    });
+    cutTo(this, S.Choice, { fadeMs: 700 });
   }
 
   /** Una lamina: entra, respira con su ambiente, y se va. */

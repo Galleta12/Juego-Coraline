@@ -145,13 +145,18 @@ class AudioSystem {
   /**
    * Baja (o devuelve) el volumen de la musica, sin cortarla.
    *
-   * Se usa en las transiciones de tramo: un volumen un poco mas bajo que
-   * el normal ayuda a que la pausa se sienta como un momento de tension
-   * en vez de una pantalla de carga cualquiera.
+   * Se usa cuando algo tiene que oirse por encima de la cancion: una
+   * frase importante, una carta de transicion, o el rato en que hay que
+   * leer numeros pequeños en el calendario. La cancion no se corta —
+   * cortarla y volver a arrancarla se nota muchisimo mas que bajarla.
+   *
+   * `level` es la fraccion que se queda sonando. Por defecto 0.65: lo
+   * justo para que la voz o el efecto manden sin que parezca que la
+   * musica se fue. Para ratos largos de lectura conviene bajar mas.
    */
-  duckMusic(active: boolean, ms = 300): void {
+  duckMusic(active: boolean, ms = 300, level = 0.65): void {
     if (!this.musicBus || !this.ctx) return;
-    const target = active ? MUSIC_MASTER * 0.4 : MUSIC_MASTER;
+    const target = active ? MUSIC_MASTER * level : MUSIC_MASTER;
     this.musicBus.gain.setTargetAtTime(target, this.ctx.currentTime, ms / 1000);
   }
 
@@ -349,6 +354,41 @@ class AudioSystem {
     uiDeny: () => this.blip(200, 120, 0.18, "square", 0.09),
     pageTurn: () => this.noise(0.26, 0.07, 1800, 500, 0, 0.7),
     typewriter: () => this.noise(0.04, 0.09, 3000, 1100),
+
+    /* ── Transiciones ──────────────────────────────────────────────
+     *
+     * Los cortes entre tramos iban en silencio: la pantalla cambiaba y
+     * no sonaba nada, asi que se leian como una pantalla de carga. Cada
+     * uno de estos es corto y no pisa la cancion, que sigue por debajo
+     * (mas bajita, ver `duckMusic`).
+     */
+
+    /**
+     * Barrido de aire: algo que entra o sale de plano.
+     *
+     * Sube y baja a la vez, en dos capas cruzadas — eso es lo que suena a
+     * "algo que pasa" y no a un siseo. El volumen es alto para un efecto
+     * (0.3 frente al 0.1 de la mayoria) a proposito: es ruido de banda
+     * ancha y filtrado, que se percibe MUCHO mas flojo que un tono puro
+     * al mismo nivel. A 0.1 quedaba por debajo de la musica y no se oia.
+     */
+    whoosh: () => {
+      this.noise(0.55, 0.3, 220, 3000, 0, 0.5);
+      this.noise(0.45, 0.22, 2800, 200, 0.08, 0.45);
+      // Una capa mas grave por debajo, para que tenga cuerpo.
+      this.noise(0.5, 0.16, 700, 120, 0.02, 0.8);
+    },
+    /** Campanita: una lamina que se planta delante. */
+    chime: () => {
+      this.blip(880, 880, 0.5, "sine", 0.08);
+      this.blip(1320, 1320, 0.42, "sine", 0.05, 0.02);
+      this.blip(1760, 1760, 0.34, "sine", 0.03, 0.05);
+    },
+    /** Golpe blando y grave: el peso del corte. */
+    thud: () => {
+      this.blip(120, 46, 0.34, "sine", 0.16);
+      this.noise(0.2, 0.06, 400, 90);
+    },
   };
 
   /**

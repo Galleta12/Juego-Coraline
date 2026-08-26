@@ -5,11 +5,30 @@ import Phaser from "phaser";
  *
  * El calendario del juego imita un tablero de trapo con botones: paneles
  * de fieltro, pespunte blanco alrededor y botones de cuatro agujeros en
- * las esquinas. Todo se dibuja aqui con Graphics para que no dependa de
- * ningun archivo de imagen y se pueda recolorear a voluntad.
+ * las esquinas. Todo se dibuja aqui a mano para que no dependa de ningun
+ * archivo de imagen y se pueda recolorear a voluntad.
  *
  * El pespunte es lo que vende el efecto. Un rectangulo con borde
  * parece una caja de interfaz; un rectangulo con puntadas parece tela.
+ *
+ * ── Por que esto pinta a TEXTURA y no a Graphics ──────────────────────
+ *
+ * Un `Graphics` de Phaser no guarda un dibujo: guarda la LISTA DE
+ * ORDENES y las vuelve a ejecutar en cada fotograma. Cada panel cosido
+ * son unas sesenta puntadas sueltas, cada una con su `beginPath` y su
+ * `strokePath`.
+ *
+ * El calendario llega a tener a la vez cuarenta casillas de dia y hasta
+ * veintiseis franjas de hora, y todas son paneles cosidos: pasaban de
+ * cuatro mil ordenes de dibujo POR FOTOGRAMA. De ahi venia que la
+ * pantalla fuera a tirones y que pulsar una fecha tardara en responder —
+ * no era la logica de las fechas, era el repintado.
+ *
+ * Ahora cada combinacion de tamaño y estilo se dibuja UNA vez a una
+ * textura y lo que se pone en pantalla son imagenes, que para la tarjeta
+ * grafica es un cuadrado con una foto encima. La cache vive en el gestor
+ * de texturas de Phaser, asi que se comparte entre todas las casillas
+ * del mismo tamaño y sobrevive a los cambios de escena.
  */
 
 export interface PanelStyle {
@@ -18,10 +37,11 @@ export interface PanelStyle {
   stitch?: number;
   stitchAlpha?: number;
   radius?: number;
-  /** Botones en las esquinas. */
-  buttons?: boolean;
-  buttonColor?: number;
 }
+
+/** Cuanto sobresale la sombra por la derecha y por abajo. */
+const SHADOW_X = 3;
+const SHADOW_Y = 4;
 
 /** Puntada discontinua siguiendo el contorno de un rectangulo. */
 function stitchRect(
@@ -37,10 +57,7 @@ function stitchRect(
   const gap = 5;
   g.lineStyle(1.6, color, alpha);
 
-  const run = (
-    from: [number, number],
-    to: [number, number],
-  ): void => {
+  const run = (from: [number, number], to: [number, number]): void => {
     const dx = to[0] - from[0];
     const dy = to[1] - from[1];
     const len = Math.hypot(dx, dy);
@@ -62,38 +79,73 @@ function stitchRect(
   run([x + i, y + h - i], [x + i, y + i]);
 }
 
-/** Boton de cuatro agujeros. */
+/**
+ * Dibuja una vez y devuelve la clave de la textura.
+ *
+ * `scene.make.graphics` con `add:false` crea un Graphics suelto que no
+ * entra en la lista de dibujo: sirve de lienzo y se tira en cuanto la
+ * textura esta hecha.
+ */
+function bake(
+  scene: Phaser.Scene,
+  key: string,
+  w: number,
+  h: number,
+  draw: (g: Phaser.GameObjects.Graphics) => void,
+): string {
+  if (scene.textures.exists(key)) return key;
+  const g = scene.make.graphics({ x: 0, y: 0 }, false);
+  draw(g);
+  g.generateTexture(key, Math.ceil(w), Math.ceil(h));
+  g.destroy();
+  return key;
+}
+
+/**
+ * Boton de cuatro agujeros, centrado en (x, y).
+ *
+ * El radio y el color son lo unico que cambia entre unos y otros, asi
+ * que la cache va por esos dos: en el calendario hay decenas de botones
+ * y casi todos son el mismo dibujo repetido.
+ */
 export function button(
   scene: Phaser.Scene,
   x: number,
   y: number,
   r = 9,
   color = 0x181226,
-): Phaser.GameObjects.Graphics {
-  const g = scene.add.graphics();
-  g.fillStyle(color, 1);
-  g.fillCircle(x, y, r);
-  g.lineStyle(1.4, 0x000000, 0.45);
-  g.strokeCircle(x, y, r);
-  g.fillStyle(0x000000, 0.5);
-  const o = r * 0.34;
-  const holes: [number, number][] = [
-    [-o, -o],
-    [o, -o],
-    [-o, o],
-    [o, o],
-  ];
-  for (const [dx, dy] of holes) {
-    g.fillCircle(x + dx, y + dy, r * 0.16);
-  }
-  return g;
+): Phaser.GameObjects.Image {
+  // Un pixel de margen: el trazo del contorno se sale medio pixel del
+  // radio y sin holgura la textura lo recorta.
+  const pad = 2;
+  const size = r * 2 + pad * 2;
+  const key = bake(scene, `stitch-btn-${r}-${color.toString(16)}`, size, size, (g) => {
+    const c = r + pad;
+    g.fillStyle(color, 1);
+    g.fillCircle(c, c, r);
+    g.lineStyle(1.4, 0x000000, 0.45);
+    g.strokeCircle(c, c, r);
+    g.fillStyle(0x000000, 0.5);
+    const o = r * 0.34;
+    for (const [dx, dy] of [
+      [-o, -o],
+      [o, -o],
+      [-o, o],
+      [o, o],
+    ] as [number, number][]) {
+      g.fillCircle(c + dx, c + dy, r * 0.16);
+    }
+  });
+  return scene.add.image(x, y, key).setOrigin(0.5);
 }
 
 /**
  * Panel de fieltro con pespunte.
  *
- * Devuelve el Graphics para poder meterlo en un contenedor; las
- * coordenadas son relativas al origen que se le pase.
+ * `x`/`y` son la esquina superior izquierda del panel, igual que cuando
+ * esto dibujaba con Graphics: la sombra sobresale por fuera y va dentro
+ * de la textura, asi que el origen (0,0) la coloca exactamente donde
+ * estaba.
  */
 export function panel(
   scene: Phaser.Scene,
@@ -102,7 +154,7 @@ export function panel(
   w: number,
   h: number,
   style: PanelStyle,
-): Phaser.GameObjects.Graphics {
+): Phaser.GameObjects.Image {
   const {
     fill,
     fillAlpha = 1,
@@ -111,18 +163,20 @@ export function panel(
     radius = 8,
   } = style;
 
-  const g = scene.add.graphics();
-  // Sombra suave debajo: despega la tela del fondo.
-  g.fillStyle(0x000000, 0.35);
-  g.fillRoundedRect(x + 3, y + 4, w, h, radius);
+  const key = `stitch-panel-${Math.round(w)}x${Math.round(h)}-${fill.toString(16)}-${fillAlpha}-${stitch.toString(16)}-${stitchAlpha}-${radius}`;
+  bake(scene, key, w + SHADOW_X, h + SHADOW_Y, (g) => {
+    g.fillStyle(0x000000, 0.35);
+    g.fillRoundedRect(SHADOW_X, SHADOW_Y, w, h, radius);
 
-  g.fillStyle(fill, fillAlpha);
-  g.fillRoundedRect(x, y, w, h, radius);
-  g.lineStyle(2, 0x000000, 0.4);
-  g.strokeRoundedRect(x, y, w, h, radius);
+    g.fillStyle(fill, fillAlpha);
+    g.fillRoundedRect(0, 0, w, h, radius);
+    g.lineStyle(2, 0x000000, 0.4);
+    g.strokeRoundedRect(0, 0, w, h, radius);
 
-  stitchRect(g, x, y, w, h, stitch, stitchAlpha);
-  return g;
+    stitchRect(g, 0, 0, w, h, stitch, stitchAlpha);
+  });
+
+  return scene.add.image(x, y, key).setOrigin(0, 0);
 }
 
 /** Cinta de titulo, con las puntas recortadas. */
@@ -133,28 +187,32 @@ export function banner(
   w: number,
   h: number,
   fill = 0x5a2848,
-): Phaser.GameObjects.Graphics {
-  const x = cx - w / 2;
-  const g = scene.add.graphics();
+): Phaser.GameObjects.Image {
+  // Los hilos sueltos salen 26 px por cada lado; la textura tiene que
+  // dejarles sitio o quedan cortados a ras.
+  const tail = 28;
+  const key = `stitch-banner-${Math.round(w)}x${Math.round(h)}-${fill.toString(16)}`;
+  bake(scene, key, w + tail * 2, h + SHADOW_Y, (g) => {
+    const x = tail;
+    g.fillStyle(0x000000, 0.35);
+    g.fillRoundedRect(x + SHADOW_X, SHADOW_Y, w, h, 6);
 
-  g.fillStyle(0x000000, 0.35);
-  g.fillRoundedRect(x + 3, y + 4, w, h, 6);
+    g.fillStyle(fill, 1);
+    g.fillRoundedRect(x, 0, w, h, 6);
+    g.lineStyle(2, 0x000000, 0.4);
+    g.strokeRoundedRect(x, 0, w, h, 6);
 
-  g.fillStyle(fill, 1);
-  g.fillRoundedRect(x, y, w, h, 6);
-  g.lineStyle(2, 0x000000, 0.4);
-  g.strokeRoundedRect(x, y, w, h, 6);
+    stitchRect(g, x, 0, w, h, 0xf0e6d2, 0.6);
 
-  stitchRect(g, x, y, w, h, 0xf0e6d2, 0.6);
+    g.lineStyle(1.4, 0xf0e6d2, 0.3);
+    const mid = x + w / 2;
+    for (const s of [-1, 1]) {
+      g.beginPath();
+      g.moveTo(mid + s * (w / 2), h * 0.4);
+      g.lineTo(mid + s * (w / 2 + 26), h * 0.24);
+      g.strokePath();
+    }
+  });
 
-  // Hilos sueltos a los lados, como una cinta cosida a mano.
-  g.lineStyle(1.4, 0xf0e6d2, 0.3);
-  for (const s of [-1, 1]) {
-    g.beginPath();
-    g.moveTo(cx + s * (w / 2), y + h * 0.4);
-    g.lineTo(cx + s * (w / 2 + 26), y + h * 0.24);
-    g.strokePath();
-  }
-
-  return g;
+  return scene.add.image(cx, y, key).setOrigin(0.5, 0);
 }

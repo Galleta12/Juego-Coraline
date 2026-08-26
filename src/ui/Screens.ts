@@ -275,15 +275,30 @@ export class DodgeButton {
 
   /** Aparta el boton de verdad, imagen incluida. */
   moveBy(dx: number, dy: number, duration: number): void {
-    const nx = Phaser.Math.Clamp(this.image.x + dx, GAME_WIDTH * 0.18, GAME_WIDTH * 0.82);
-    const ny = Phaser.Math.Clamp(this.image.y + dy, GAME_HEIGHT * 0.2, GAME_HEIGHT * 0.86);
+    this.moveTo(this.image.x + dx, this.image.y + dy, duration);
+  }
 
+  /**
+   * Lo lleva a un punto concreto, recortado al area util.
+   *
+   * Hace falta ademas de `moveBy` porque desplazar "un tanto hacia el
+   * lado contrario al raton" se anula solo cuando el boton ya esta
+   * pegado al tope de ese lado: el recorte devuelve la misma posicion,
+   * el cartel se queda clavado en el borde y ahi si se le alcanza. Con
+   * un destino absoluto se puede elegir el punto MAS LEJANO al raton en
+   * vez de un salto relativo que a lo mejor no cabe.
+   */
+  moveTo(x: number, y: number, duration: number): void {
+    const nx = Phaser.Math.Clamp(x, GAME_WIDTH * 0.18, GAME_WIDTH * 0.82);
+    const ny = Phaser.Math.Clamp(y, GAME_HEIGHT * 0.2, GAME_HEIGHT * 0.86);
+
+    this.scene.tweens.killTweensOf([this.image, this.glow]);
     this.scene.tweens.add({
       targets: [this.image, this.glow],
       x: nx,
       y: ny,
       duration,
-      ease: "Back.easeOut",
+      ease: "Quad.easeOut",
     });
   }
 

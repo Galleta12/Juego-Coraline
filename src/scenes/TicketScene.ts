@@ -2,12 +2,12 @@ import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
-import { GUIDE_NAME, TICKET } from "@/config/strings";
+import { TICKET } from "@/config/strings";
 import { CELEBRATION, DOG, ITEM, queue } from "@/systems/Art";
 import { audio } from "@/systems/AudioSystem";
 import { getState } from "@/systems/GameState";
 import { SceneGrade } from "@/ui/Grade";
-import { body, label, shadow, title } from "@/ui/text";
+import { body, title } from "@/ui/text";
 
 /**
  * El resguardo.
@@ -85,7 +85,7 @@ export class TicketScene extends Phaser.Scene {
     // sombrilla de Umbrella — no un rectangulo pintado por codigo. Se
     // ajusta al alto de la pantalla dejando aire arriba y abajo.
     const paper = this.add.image(0, 0, "screens/ticket-blank");
-    const k = (GAME_HEIGHT * 0.88) / paper.height;
+    const k = (GAME_HEIGHT * 0.92) / paper.height;
     paper.setScale(k);
     card.add(paper);
 
@@ -94,71 +94,75 @@ export class TicketScene extends Phaser.Scene {
     const w = paper.displayWidth;
     const h = paper.displayHeight;
 
-    // Todo el texto vive dentro del hueco claro del papel, que ocupa
-    // mas o menos el 74% del ancho y del 22% al 80% del alto. Fuera de
-    // ahi se monta sobre el marco decorado y no se lee.
-    const inner = w * 0.74;
+    // Papeleta lisa detras del texto.
+    //
+    // El billete dibujado NO tiene un hueco claro utilizable: en el
+    // centro hay niebla clara, pero a la izquierda entran el arbol y la
+    // casa y a la derecha el edificio de la R.P.D., los dos casi negros.
+    // Escribiendo directamente encima, media linea caia sobre la parte
+    // oscura y desaparecia — daba igual el color de la tinta, porque el
+    // fondo cambia de claro a negro dentro de la misma linea.
+    //
+    // Con una papeleta lisa por debajo el contraste deja de depender de
+    // por donde caiga cada palabra, y ademas se lee como una pegatina
+    // pegada al resguardo, que es justo lo que es.
+    const noteW = w * 0.82;
+    const noteH = h * 0.5;
+    const note = this.add.graphics();
+    note.fillStyle(0x000000, 0.25);
+    note.fillRoundedRect(-noteW / 2 + 3, -noteH / 2 + 4, noteW, noteH, 10);
+    note.fillStyle(0xe9e0c8, 0.95);
+    note.fillRoundedRect(-noteW / 2, -noteH / 2, noteW, noteH, 10);
+    note.lineStyle(2, 0x7a5a34, 0.5);
+    note.strokeRoundedRect(-noteW / 2, -noteH / 2, noteW, noteH, 10);
+    card.add(note);
 
-    const heading = shadow(
-      this.add.text(0, -h * 0.29, TICKET.confirmed, title(23, 0x7a4a12)).setOrigin(0.5),
-    );
-    heading.setLetterSpacing(1);
+    // El ancho util es el de la papeleta menos un margen.
+    const inner = noteW - 34;
+
+    // Cuatro cosas y un aviso. Nada mas.
+    //
+    // El hueco claro del papel es estrecho y antes se le metian nueve
+    // textos distintos: salian a doce puntos, apretados unos contra
+    // otros, y no se leia ninguno. Con menos lineas cabe el tamaño que
+    // hace falta para leerlas de un vistazo, que es de lo que se trata.
+    const heading = this.add
+      .text(0, -noteH / 2 + 34, TICKET.confirmed, title(34, 0x6a3d0e))
+      .setOrigin(0.5);
+    heading.setLetterSpacing(6);
     card.add(heading);
 
-    const file = this.add
-      .text(
-        0,
-        -h * 0.245,
-        TICKET.file(st.sessionId.slice(0, 8).toUpperCase()),
-        label(12, 0x4a3524),
-      )
-      .setOrigin(0.5);
-    card.add(file);
-
-    // Lo que eligio: el plan, el dia y la hora. La comida se quito del
-    // juego, asi que tampoco sale aqui.
-    //
-    // Los textos van en tinta casi negra y a mayor tamano que antes: el
-    // papel de la lamina es claro y con el marron suave de antes no se
-    // leia nada.
+    // Tinta casi negra sobre el papel claro: los marrones suaves de
+    // antes se perdian contra el fondo del billete.
     const lines: string[] = [
-      TICKET.plan(st.selectedActivity ?? "diamantes"),
       TICKET.date(prettyDate(st.selectedDate ?? "")),
       TICKET.time(st.selectedTime ?? ""),
+      TICKET.plan(st.selectedActivity ?? "diamantes"),
     ];
+    const who = st.playerName?.trim();
+    if (who) lines.push(TICKET.forWho(who));
+
+    // Repartidas por el centro de la papeleta, no apiladas desde arriba:
+    // asi el bloque queda centrado sea cual sea el numero de lineas (el
+    // nombre puede faltar).
+    const step = 32;
+    const top = -((lines.length - 1) * step) / 2;
     lines.forEach((text, i) => {
       const t = this.add
-        .text(0, -h * 0.14 + i * 34, text, body(19, 0x140c06))
+        .text(0, top + i * step, text, body(20, 0x140c06))
         .setOrigin(0.5)
         .setWordWrapWidth(inner, true)
         .setAlign("center");
       card.add(t);
     });
 
-    const who = st.playerName?.trim();
-    if (who) {
-      const forWho = this.add
-        .text(0, -h * 0.14 + lines.length * 34 + 18, TICKET.forWho(who), label(14, 0x4a3524))
-        .setOrigin(0.5);
-      card.add(forWho);
-    }
-
-    const note = this.add
-      .text(0, h * 0.205, TICKET.reserved, label(13, 0x4a3524))
-      .setOrigin(0.5)
-      .setWordWrapWidth(inner, true)
-      .setAlign("center");
+    // El aviso, abajo del todo y separado del bloque de datos.
     const contact = this.add
-      .text(0, h * 0.265, TICKET.contact, label(13, 0x4a3524))
+      .text(0, noteH / 2 - 42, TICKET.contact, body(16, 0x4a3524))
       .setOrigin(0.5)
       .setWordWrapWidth(inner, true)
       .setAlign("center");
-    card.add([note, contact]);
-
-    const sign = this.add
-      .text(inner / 2, h * 0.315, `— ${GUIDE_NAME}`, label(14, 0x4a3524))
-      .setOrigin(1, 0.5);
-    card.add(sign);
+    card.add(contact);
 
     this.tweens.add({
       targets: card,
@@ -169,52 +173,16 @@ export class TicketScene extends Phaser.Scene {
       ease: "Back.easeOut",
     });
     audio.sfx.uiConfirm();
+    // Campanita de remate: es el final del juego, no un cambio de
+    // pantalla mas.
+    this.time.delayedCall(420, () => audio.sfx.chime());
 
-    await this.wait(1200);
+    // El sello, la firma y el agradecimiento se quitaron enteros.
+    // Cruzaban por encima de las lineas de datos — que es justo lo unico
+    // que hay que poder leer aqui — y ninguno decia nada que no dijera
+    // ya el propio resguardo.
 
-    // Sello. Cae de golpe y se queda torcido, como los de verdad.
-    //
-    // Va anclado al papel y en la franja baja del hueco claro: con
-    // coordenadas de pantalla sueltas caia fuera del billete, sobre el
-    // fondo, y tachaba las lineas de aviso.
-    const stamp = this.add
-      .container(cx - w * 0.04, cy + h * 0.345)
-      .setAlpha(0)
-      .setScale(2.2)
-      .setAngle(-9);
-    const ring = this.add
-      .rectangle(0, 0, Math.min(230, w * 0.66), 40, 0x000000, 0)
-      .setStrokeStyle(3, 0xc0506a, 0.8);
-    const stampText = this.add
-      .text(0, 0, TICKET.stamp, label(10, 0xe0808a))
-      .setOrigin(0.5);
-    stampText.setLetterSpacing(2);
-    stamp.add([ring, stampText]);
-
-    this.tweens.add({
-      targets: stamp,
-      alpha: 0.8,
-      scale: 1,
-      duration: 260,
-      ease: "Quad.easeIn",
-      onComplete: () => {
-        audio.sfx.blockBreak();
-        this.cameras.main.shake(160, 0.004);
-      },
-    });
-
-    await this.wait(1100);
-
-    const thanks = shadow(
-      this.add
-        .text(cx, GAME_HEIGHT - 52, TICKET.thanks, label(13, INK.boneDim))
-        .setOrigin(0.5)
-        .setWordWrapWidth(760, true)
-        .setAlign("center")
-        .setAlpha(0),
-    );
-    this.tweens.add({ targets: thanks, alpha: 1, duration: 800 });
-
+    await this.wait(900);
     this.celebrate();
   }
 

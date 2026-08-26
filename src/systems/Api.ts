@@ -3,6 +3,8 @@ import type {
   ApiResponse,
   BookingRequest,
   GameOpenRequest,
+  ProgressEvent,
+  ProgressRequest,
 } from "@shared/contracts";
 import { slotIsAllowed } from "@shared/contracts";
 
@@ -46,19 +48,55 @@ export async function reportOpen(): Promise<ApiResponse> {
   const payload: GameOpenRequest = {
     sessionId: getState().sessionId,
     timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    platform: matchMedia("(pointer:coarse)").matches ? "mobile" : "desktop",
     viewport: { w: window.innerWidth, h: window.innerHeight },
     screen: { w: screen.width, h: screen.height },
     language: navigator.language,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    localTime: localTime(),
+    ...device(),
   };
   return post("/api/game-open", payload);
 }
 
+/** El dispositivo, tal y como lo ve el navegador. */
+const device = (): { platform: "desktop" | "mobile"; userAgent: string; timezone: string } => ({
+  platform: matchMedia("(pointer:coarse)").matches ? "mobile" : "desktop",
+  userAgent: navigator.userAgent,
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+});
+
+/** Su hora, con su formato. El servidor no puede deducirla. */
+const localTime = (): string => new Date().toLocaleString();
+
+/**
+ * Aviso de que llego a un hito.
+ *
+ * Cada hito se manda UNA vez por sesion. Sin este freno, volver a entrar
+ * a una escena — morir y reaparecer, o rehacer un tramo — mandaba el
+ * mismo correo otra vez, y lo que interesa saber es por donde va, no
+ * cuantas veces lo repitio.
+ */
+const sent = new Set<ProgressEvent>();
+
+export async function reportProgress(event: ProgressEvent): Promise<ApiResponse> {
+  if (sent.has(event)) return { ok: true, delivery: "logged" };
+  sent.add(event);
+
+  const st = getState();
+  const payload: ProgressRequest = {
+    event,
+    sessionId: st.sessionId,
+    timestamp: new Date().toISOString(),
+    localTime: localTime(),
+    ...device(),
+    ...(st.playerName ? { playerName: st.playerName } : {}),
+  };
+  return post("/api/progress", payload);
+}
+
 /** Confirmacion de la expedicion. */
 export async function confirmBooking(date: string, time: string): Promise<ApiResponse> {
-  const hero = getState().selectedHero ?? "blue";
+  const st = getState();
+  const hero = st.selectedHero ?? "blue";
   if (!slotIsAllowed(date, time)) {
     return { ok: false, delivery: "failed", message: "Franja no disponible" };
   }
@@ -66,7 +104,11 @@ export async function confirmBooking(date: string, time: string): Promise<ApiRes
     date,
     time,
     hero,
-    sessionId: getState().sessionId,
+    sessionId: st.sessionId,
+    localTime: localTime(),
+    ...device(),
+    ...(st.playerName ? { playerName: st.playerName } : {}),
+    ...(st.selectedActivity ? { activity: st.selectedActivity } : {}),
   };
   return post("/api/booking", payload);
 }

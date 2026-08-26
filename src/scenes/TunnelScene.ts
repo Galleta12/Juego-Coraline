@@ -31,6 +31,7 @@ export class TunnelScene extends LevelScene {
       withGuide: false,
       withAltered: false,
       card: "cave",
+      progress: "tunnel",
     });
   }
 

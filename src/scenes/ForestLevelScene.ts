@@ -91,6 +91,7 @@ export class ForestLevelScene extends LevelScene {
       withGuide: false,
       withAltered: true,
       card: "forest",
+      progress: "forest",
     });
   }
 

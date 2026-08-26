@@ -101,7 +101,14 @@ WHOLE = {
 
 def erase_no_button(img: Image.Image) -> Image.Image:
     """
-    Borra el cartel "NO" que trae pintado `nuevo_eleccion_background.png`.
+    YA NO SE USA: la lamina de eleccion llega dibujada sin el NO.
+
+    Se conserva porque el problema puede volver — cualquier lamina nueva
+    que traiga un cartel pintado donde va un boton suelto necesita
+    exactamente esto — y volver a deducir la caja y el metodo cuesta mas
+    que dejar la funcion escrita.
+
+    Borraba el cartel "NO" que traia pintado `nuevo_eleccion_background.png`.
 
     El boton del NO ahora es una pieza suelta (`botton_no.png`) que se
     aparta del raton en la escena — y para que se pueda mover, el hueco
@@ -192,9 +199,6 @@ def main() -> int:
             print(f"  falta {filename}")
             continue
         img = Image.open(src).convert("RGBA")
-
-        if filename == "nuevo_eleccion_background.png":
-            img = erase_no_button(img).convert("RGBA")
 
         # Recorte al contenido: las laminas transparentes traen mucho
         # margen alrededor del dibujo, y centrarlas en pantalla con ese

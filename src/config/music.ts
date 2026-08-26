@@ -48,15 +48,27 @@ export const MUSIC: Record<string, Track> = {
   boss: { file: "jefa.mp3", volume: 0.6, loop: true },
 
   /**
-   * Silencio durante la celebracion en la guarida.
+   * Reservada, sin pista. Ya no la usa nadie.
    *
-   * A proposito: la de la jefa se apaga, quedan solo los efectos de la
-   * lluvia de tortas, y la cancion entra de golpe en el corte a las
-   * letras. Ese golpe se pierde si suena algo de fondo mientras tanto.
+   * Existia para dejar la guarida en silencio durante la celebracion. Ese
+   * silencio sigue estando, pero ahora lo hace `BossScene` a mano
+   * (`audio.stopMusic()` y un segundo de espera) porque hace falta que
+   * dure EXACTAMENTE un segundo antes de que entre la cancion del final:
+   * con un cambio de pista normal se cruzaban las dos en un fundido y el
+   * corte no se notaba.
    */
   victory: none(),
 
-  /** Del corte con las letras hasta el resguardo, sin interrupcion. */
+  /**
+   * La cancion del final.
+   *
+   * Arranca en la celebracion de la guarida — un segundo despues de que
+   * se corte la de la jefa — y NO se vuelve a tocar: la carta del jefe,
+   * las laminas, "esta no era la mision", la eleccion, el calendario y
+   * el resguardo comparten todos esta misma clave, y `playMusic` no
+   * reinicia una pista que ya esta sonando. Suena entera y de corrido
+   * por todo el tramo final.
+   */
   finale: { file: "final.mp3", volume: 0.62, loop: true },
 };
 

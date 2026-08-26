@@ -85,15 +85,48 @@ const game = new Phaser.Game({
   ],
 });
 
+/**
+ * Vuelve a medir el contenedor y reescala el lienzo, EN ESE ORDEN.
+ *
+ * El orden es el arreglo entero. `refresh()` reescala usando el tamaño
+ * del contenedor que Phaser tenga guardado (`parentSize`), y quien lo
+ * actualiza es `getParentBounds()`. Llamando solo a `refresh()` desde el
+ * evento `resize` — como se hacia antes — se reescalaba con la medida
+ * VIEJA: al abrir el juego en una ventana pequeña y despues maximizarla,
+ * el lienzo se quedaba del tamaño de la ventana pequeña, en medio de un
+ * marco negro enorme.
+ *
+ * Phaser tiene su propia red de seguridad (cada 500 ms comprueba el
+ * contenedor y, si cambio, reescala) pero no llegaba a saltar: nuestro
+ * `refresh()` prematuro dejaba `parentSize` ya actualizado por el
+ * camino, asi que cuando le tocaba comprobar veia el tamaño correcto,
+ * concluia que no habia cambiado nada y no reescalaba nunca.
+ */
+const resyncCanvas = (): void => {
+  game.scale.getParentBounds();
+  game.scale.refresh();
+};
+
 game.events.once(Phaser.Core.Events.READY, () => {
   document.getElementById("boot")?.removeAttribute("data-on");
-  game.scale.refresh();
+  resyncCanvas();
 });
 
-// Al abrir barras del navegador o cambiar de pantalla, el contenedor
-// cambia de tamano y Phaser no siempre se entera a tiempo. Un refresco
-// recoloca el lienzo en el centro.
-window.addEventListener("resize", () => game.scale.refresh());
+// Redimensionar la ventana, girar el movil o entrar y salir de pantalla
+// completa.
+window.addEventListener("resize", resyncCanvas);
+window.addEventListener("orientationchange", resyncCanvas);
+
+// Y ademas, vigilando el contenedor directamente.
+//
+// Hay cambios de tamaño que NO disparan `resize` en la ventana: abrir
+// las herramientas de desarrollo acopladas a un lado, una barra del
+// navegador que aparece, o el zoom de la pagina. El observador mira la
+// caja de verdad, asi que se entera de todos.
+const stage = document.getElementById("game");
+if (stage && "ResizeObserver" in window) {
+  new ResizeObserver(resyncCanvas).observe(stage);
+}
 
 // Solo en desarrollo: saltar de escena y forzar estado desde la consola
 // o desde los scripts de QA. Vite lo elimina del build de produccion.

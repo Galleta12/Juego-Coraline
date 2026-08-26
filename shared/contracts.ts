@@ -17,6 +17,54 @@ export interface GameOpenRequest {
   screen: { w: number; h: number };
   language: string;
   timezone: string;
+  /**
+   * Su hora, ya formateada por su navegador.
+   *
+   * `timestamp` es UTC y el servidor corre en otra zona: sin esto, el
+   * correo decia la hora del servidor, que no es la que ella tenia
+   * delante al abrir el juego.
+   */
+  localTime?: string;
+}
+
+/* ── Avisos de progreso ────────────────────────────────────────────── */
+
+/**
+ * Momentos del juego que merecen un correo.
+ *
+ * Uno solo por hito: interesa saber por donde va, no cada paso que da.
+ * La apertura del juego va aparte (`GameOpenRequest`) porque lleva su
+ * propia ficha tecnica del dispositivo.
+ */
+export const PROGRESS_EVENTS = [
+  "name",
+  "tutorial",
+  "forest",
+  "tunnel",
+  "boss",
+  "choice",
+] as const;
+
+export type ProgressEvent = (typeof PROGRESS_EVENTS)[number];
+
+export interface ProgressRequest {
+  event: ProgressEvent;
+  sessionId: string;
+  /** ISO, para ordenar. */
+  timestamp: string;
+  /**
+   * La hora tal y como la ve ELLA, ya formateada por su navegador.
+   *
+   * El servidor no puede reconstruirla: corre en otra zona horaria y
+   * `timestamp` es UTC. Se manda hecha desde el cliente, que es el unico
+   * que sabe que hora tiene el reloj de quien esta jugando.
+   */
+  localTime: string;
+  timezone: string;
+  platform: "desktop" | "mobile";
+  userAgent: string;
+  /** Lo que escribio en la primera pantalla, si ya lo escribio. */
+  playerName?: string;
 }
 
 /* ── Reserva ───────────────────────────────────────────────────────── */
@@ -28,6 +76,21 @@ export interface BookingRequest {
   time: string;
   hero: "blue" | "blonde" | "red";
   sessionId: string;
+  /** Su nombre, para no tener que cruzar el correo con el de la apertura. */
+  playerName?: string;
+  /** "diamantes" o "película": que eligio hacer. */
+  activity?: string;
+  /**
+   * Hora y dispositivo, igual que en todos los demas avisos.
+   *
+   * Se repiten en cada correo a proposito: cada uno tiene que poder
+   * leerse solo, sin ir a buscar el de la apertura para saber desde
+   * donde y a que hora estaba jugando.
+   */
+  localTime?: string;
+  timezone?: string;
+  platform?: "desktop" | "mobile";
+  userAgent?: string;
 }
 
 export interface ApiResponse {
@@ -87,6 +150,16 @@ export function validateBooking(input: unknown): input is BookingRequest {
   if (typeof v.hero !== "string" || !HEROES.has(v.hero)) return false;
   if (typeof v.sessionId !== "string" || v.sessionId.length > 128) return false;
   return slotIsAllowed(v.date, v.time);
+}
+
+export function validateProgress(input: unknown): input is ProgressRequest {
+  if (typeof input !== "object" || input === null) return false;
+  const v = input as Record<string, unknown>;
+  if (typeof v.event !== "string") return false;
+  if (!(PROGRESS_EVENTS as readonly string[]).includes(v.event)) return false;
+  if (typeof v.sessionId !== "string" || v.sessionId.length > 128) return false;
+  if (v.playerName !== undefined && typeof v.playerName !== "string") return false;
+  return typeof v.timestamp === "string";
 }
 
 export function validateOpen(input: unknown): input is GameOpenRequest {

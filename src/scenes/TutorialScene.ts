@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { reportProgress } from "@/systems/Api";
 import { COFFEE, GAME_HEIGHT, GAME_WIDTH, HEALTH, PLAYER, TILE } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
@@ -915,6 +916,7 @@ export class TutorialScene extends Phaser.Scene {
   private toProPlayer(): void {
     if (this.scene.key !== S.Tutorial) return;
     setState({ tutorialDone: true });
+    void reportProgress("tutorial");
     audio.sfx.door();
     this.cameras.main.fadeOut(700, 8, 6, 14);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {

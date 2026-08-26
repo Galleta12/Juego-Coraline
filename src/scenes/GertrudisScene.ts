@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { cutTo } from "@/ui/Transition";
 import { GAME_HEIGHT, GAME_WIDTH, SAFE } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
@@ -119,10 +120,7 @@ export class GertrudisScene extends Phaser.Scene {
 
     // Y al calendario.
     this.time.delayedCall(4200, () => {
-      this.cameras.main.fadeOut(700, 8, 6, 14);
-      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start(S.Schedule);
-      });
+      cutTo(this, S.Schedule, { fadeMs: 700 });
     });
   }
 }

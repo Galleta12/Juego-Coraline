@@ -1,9 +1,12 @@
 import {
   validateBooking,
   validateOpen,
+  validateProgress,
   type ApiResponse,
   type BookingRequest,
   type GameOpenRequest,
+  type ProgressEvent,
+  type ProgressRequest,
 } from "../shared/contracts.js";
 
 /**
@@ -137,7 +140,7 @@ export async function handleGameOpen(request: Request): Promise<Response> {
   const html = SHELL(
     "ALGUIEN ABRIÓ EL JUEGO",
     [
-      row("Cuándo", esc(new Date(v.timestamp).toLocaleString("es-ES"))),
+      row("Su hora", esc(v.localTime ?? new Date(v.timestamp).toLocaleString("es-ES"))),
       row("Dispositivo", esc(v.platform)),
       row("Ventana", `${v.viewport.w}×${v.viewport.h}`),
       row("Pantalla", `${v.screen.w}×${v.screen.h}`),
@@ -151,6 +154,52 @@ export async function handleGameOpen(request: Request): Promise<Response> {
   );
 
   return deliver("Alguien abrió el juego", html, { ...v, origin });
+}
+
+/* ── Progreso ──────────────────────────────────────────────────────── */
+
+/**
+ * Como se lee cada hito en el asunto y el titular del correo.
+ *
+ * Un texto por evento en vez de armarlo con condicionales: son seis y no
+ * van a crecer, y asi el correo que llega al movil se entiende de un
+ * vistazo sin abrirlo.
+ */
+const PROGRESS_COPY: Record<ProgressEvent, { subject: string; title: string }> = {
+  name: { subject: "escribió su nombre", title: "ENTRÓ Y PUSO SU NOMBRE" },
+  tutorial: { subject: "pasó el tutorial", title: "PASÓ EL TUTORIAL" },
+  forest: { subject: "pasó el nivel 1", title: "PASÓ EL NIVEL 1 (EL BOSQUE)" },
+  tunnel: { subject: "pasó la cueva", title: "PASÓ EL NIVEL DE LA CUEVA" },
+  boss: { subject: "venció a la jefa", title: "VENCIÓ A LA OTRA MADRE" },
+  choice: { subject: "está en la elección", title: "SE ENCUENTRA EN LA ELECCIÓN" },
+};
+
+export async function handleProgress(request: Request): Promise<Response> {
+  const early = preflight(request);
+  if (early) return early;
+
+  const body = await readJson(request);
+  if (!validateProgress(body)) {
+    return json({ ok: false, delivery: "failed", message: "Datos invalidos" }, 400);
+  }
+  const v = body as ProgressRequest;
+  const copy = PROGRESS_COPY[v.event];
+  const who = v.playerName?.trim() ? v.playerName.trim() : "Sin nombre todavía";
+
+  const html = SHELL(
+    copy.title,
+    [
+      row("Quién", esc(who)),
+      row("Su hora", esc(v.localTime || new Date(v.timestamp).toLocaleString("es-ES"))),
+      row("Zona horaria", esc(v.timezone ?? "—")),
+      row("Dispositivo", esc(v.platform ?? "—")),
+      row("Navegador", esc((v.userAgent ?? "").slice(0, 180))),
+      row("Sesión", esc(v.sessionId)),
+    ].join(""),
+    "Aviso automático de progreso.",
+  );
+
+  return deliver(`${who} ${copy.subject}`, html, v);
 }
 
 /* ── Reserva ───────────────────────────────────────────────────────── */
@@ -167,17 +216,29 @@ export async function handleBooking(request: Request): Promise<Response> {
   }
   const v = body as BookingRequest;
 
+  const who = v.playerName?.trim() ? v.playerName.trim() : "Sin nombre";
+  const activity = v.activity?.trim() ? v.activity.trim() : "sin especificar";
+
   const html = SHELL(
-    "NUEVA EXPEDICIÓN MINECRAFT",
+    "NUEVA EXPEDICIÓN CONFIRMADA",
     [
+      row("Quién", esc(who)),
+      row("Qué quiere hacer", esc(activity)),
       row("Fecha", `${esc(v.date)} (${esc(humanDate(v.date))})`),
       row("Hora", esc(v.time)),
       row("Personaje elegido", esc(v.hero)),
+      row("Su hora al confirmar", esc(v.localTime ?? "—")),
+      row("Zona horaria", esc(v.timezone ?? "—")),
+      row("Dispositivo", esc(v.platform ?? "—")),
+      row("Navegador", esc((v.userAgent ?? "").slice(0, 180))),
       row("Sesión", esc(v.sessionId)),
-      row("Confirmado", esc(new Date().toLocaleString("es-ES"))),
     ].join(""),
     "Tasa de supervivencia estimada: 37%.",
   );
 
-  return deliver(`Expedición confirmada — ${v.date} ${v.time}`, html, v);
+  return deliver(
+    `${who} agendó: ${activity} — ${v.date} ${v.time}`,
+    html,
+    v,
+  );
 }

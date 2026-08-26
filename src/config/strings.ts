@@ -173,18 +173,21 @@ export const SCHEDULE = {
   sending: "ENVIANDO…",
 } as const;
 
+/**
+ * El resguardo final, reducido a lo que de verdad importa.
+ *
+ * Antes llevaba encima nueve textos — titular, numero de expediente, tres
+ * lineas de datos, a nombre de quien, dos avisos, una firma, un sello y
+ * un agradecimiento — y el hueco claro del papel no da para tanto: todo
+ * salia diminuto y encima se pisaba. Ahora son cuatro cosas y se leen.
+ */
 export const TICKET = {
-  confirmed: "RESERVA CONFIRMADA ✓",
-  plan: (p: string) => `Plan: ${p}`,
+  confirmed: "LISTO",
   date: (d: string) => `Fecha: ${d}`,
   time: (t: string) => `Hora: ${t}`,
-  forWho: (n: string) => `A nombre de ${n}`,
-  reserved: "Se ha reservado esta franja para búsqueda de diamantes.",
-  contact: "Uno de nuestros agentes se pondrá en contacto con usted ese día.",
-  thanks:
-    "Gracias por utilizar nuestros servicios de expedición cuestionablemente profesionales.",
-  file: (n: string) => `EXPEDIENTE: DIA-${n}`,
-  stamp: "AUTORIZACIÓN MINERA CONCEDIDA",
+  plan: (p: string) => `Actividad: ${p}`,
+  forWho: (n: string) => `Nombre: ${n}`,
+  contact: "Se pondrán en contacto con usted ese día.",
 } as const;
 
 export const NAME_SCREEN = {
@@ -200,8 +203,10 @@ export const NAME_SCREEN = {
  * boton se aparta solo cuando intenta pulsarlo.
  */
 export const CHOICE = {
-  mustTryNo: "Ah... primero fíjate qué pasaría si dices que no.",
-  noLines: ["Ah...", "Ni modo, no se puede.", "Qué pena.", "Una cebolla para ti."],
+  /** Empujon, una sola vez, si elige sin haber probado el NO. */
+  mustTryNo: "Ah... pero fíjate qué hubiera pasado si le dabas al no.",
+  /** La escenita del NO. Pasa una vez y nunca mas. */
+  noLines: ["Ah... no se puede.", "Ni modo...", "Qué pena...", "Ten una cebolla."],
   foodTitle: "¿Y de comer?",
 } as const;
 
