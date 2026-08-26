@@ -137,8 +137,11 @@ export async function handleGameOpen(request: Request): Promise<Response> {
     else if (raw.includes(":")) origin = `${raw.split(":").slice(0, 3).join(":")}::x`;
   }
 
+  // Entrar a jugar y quedarse en la puerta no es lo mismo, y el correo
+  // tiene que distinguirlo desde el asunto: si llego desde el movil, no
+  // vio el juego siquiera.
   const html = SHELL(
-    "ALGUIEN ABRIÓ EL JUEGO",
+    v.blocked ? "ENTRÓ DESDE EL MÓVIL (NO PUDO JUGAR)" : "ALGUIEN ABRIÓ EL JUEGO",
     [
       row("Su hora", esc(v.localTime ?? new Date(v.timestamp).toLocaleString("es-ES"))),
       row("Dispositivo", esc(v.platform)),
@@ -150,10 +153,16 @@ export async function handleGameOpen(request: Request): Promise<Response> {
       row("Sesión", esc(v.sessionId)),
       row("Origen", esc(origin)),
     ].join(""),
-    "Aviso automático de apertura. Se envía una vez por sesión.",
+    v.blocked
+      ? "Abrió el link en un teléfono, así que le salió el aviso de que se juega en PC."
+      : "Aviso automático de apertura. Se envía una vez por sesión.",
   );
 
-  return deliver("Alguien abrió el juego", html, { ...v, origin });
+  return deliver(
+    v.blocked ? "Alguien abrió el juego desde el móvil" : "Alguien abrió el juego",
+    html,
+    { ...v, origin },
+  );
 }
 
 /* ── Progreso ──────────────────────────────────────────────────────── */

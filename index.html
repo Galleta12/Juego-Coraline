@@ -190,6 +190,41 @@
     document.getElementById("boot").removeAttribute("data-on");
     document.getElementById("mobile").setAttribute("data-on", "");
 
+    // El aviso de "alguien entro" se manda DESDE AQUI cuando es un movil.
+    //
+    // Lo normal es que lo mande el arranque del juego, pero en un
+    // telefono el juego no llega a cargarse: esta misma puerta corta
+    // antes de importar el motor. Resultado: entrar desde el movil no
+    // avisaba de nada, y justo esos son los que necesitan que alguien se
+    // entere para pasarles el link.
+    //
+    // Va en JavaScript pelado, sin tocar el paquete del juego: cargar
+    // 190 KB de codigo en un telefono solo para mandar un aviso seria
+    // absurdo cuando lo unico que hace falta es un `fetch`.
+    try {
+      const YA = "expedicion-diamante:opened";
+      if (!sessionStorage.getItem(YA)) {
+        sessionStorage.setItem(YA, "1");
+        fetch("/api/game-open", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          keepalive: true,
+          body: JSON.stringify({
+            sessionId: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10),
+            timestamp: new Date().toISOString(),
+            localTime: new Date().toLocaleString(),
+            userAgent: navigator.userAgent,
+            platform: "mobile",
+            viewport: { w: innerWidth, h: innerHeight },
+            screen: { w: screen.width, h: screen.height },
+            language: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            blocked: true,
+          }),
+        }).catch(() => { /* sin red: el aviso se pierde, la puerta sigue */ });
+      }
+    } catch { /* sin sessionStorage: mejor no avisar que avisar en bucle */ }
+
     const btn = document.getElementById("copy");
     btn.addEventListener("click", async () => {
       try {

@@ -25,6 +25,16 @@ export interface GameOpenRequest {
    * delante al abrir el juego.
    */
   localTime?: string;
+  /**
+   * Entro, pero no pudo jugar: telefono o pantalla pequeña.
+   *
+   * En un movil el juego NO llega a cargarse — la puerta que pide
+   * teclado y raton corta antes de importar el motor — asi que el aviso
+   * lo manda esa puerta y no el arranque del juego. Sin esta marca los
+   * dos correos se leerian igual, y no es lo mismo que alguien entre a
+   * jugar que alguien se quede en la puerta.
+   */
+  blocked?: boolean;
 }
 
 /* ── Avisos de progreso ────────────────────────────────────────────── */
