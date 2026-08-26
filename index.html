@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Fran Coraline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Una expedición minera cuestionablemente profesional.">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%2308060e'/><path d='M4 6h8l-4 6z' fill='%234ee0d8'/><path d='M4 6l2-2h4l2 2z' fill='%2380f2ec'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@400;600&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+  :root{
+    --void:#08060e; --ink:#140d1f; --bruise:#2b1a3f;
+    --thread:#7c4a86; --bone:#e6dccb; --dim:#8d8497;
+    --gold:#d9a441; --diamond:#4ee0d8;
+    --display:"Grenze Gotisch","Iowan Old Style",Georgia,serif;
+    --body:"Crimson Pro",Georgia,serif;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  /* El fondo va tambien en <html>, no solo en <body>.
+     El lienzo se centra y deja franjas a los lados cuando la ventana no
+     tiene la proporcion del juego; si <html> se queda con el blanco por
+     defecto del navegador, esas franjas salen blancas. */
+  html{background:var(--void)}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--void); color:var(--bone);
+    font-family:var(--body); overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgba(43,26,63,.5), transparent 62%),
+      radial-gradient(100% 80% at 50% 110%, rgba(124,74,134,.18), transparent 66%);
+  }
+
+  /* Un único responsable del centrado: este flex. Phaser va en
+     NO_CENTER, así no compiten. */
+  #game{
+    position:fixed; inset:0; z-index:1; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #game canvas{display:block; margin:0}
+
+  .gate{
+    position:fixed; inset:0; z-index:10; display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    gap:1.4rem; padding:2rem; text-align:center; background:var(--void);
+  }
+  .gate[data-on]{display:flex}
+
+  .eyebrow{
+    font-family:var(--body); font-size:.72rem; letter-spacing:.34em;
+    text-transform:uppercase; color:var(--thread); margin:0;
+  }
+  .headline{
+    font-family:var(--display); font-weight:600;
+    font-size:clamp(1.4rem,5vw,2.2rem); letter-spacing:.03em;
+    color:var(--bone); margin:0; line-height:1.2; max-width:20ch;
+    text-wrap:balance;
+  }
+  .body{font-size:1rem; line-height:1.8; color:var(--dim); max-width:34ch; margin:0}
+  .meta{font-size:.72rem; letter-spacing:.2em; color:var(--thread); opacity:.7; margin:0}
+
+  /* Firma: una costura que se cose sola */
+  .stitch{width:min(280px,70vw); height:2px; position:relative; overflow:hidden}
+  .stitch::after{
+    content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(90deg, var(--thread) 0 7px, transparent 7px 13px);
+    transform:scaleX(0); transform-origin:left;
+    animation:sew 1.5s cubic-bezier(.6,0,.2,1) forwards;
+  }
+  @keyframes sew{to{transform:scaleX(1)}}
+
+  button{
+    font-family:var(--body); font-size:.8rem; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--bone); background:transparent;
+    padding:.8rem 1.5rem; border:1px solid var(--thread); border-radius:0;
+    cursor:pointer; transition:background .18s, color .18s, border-color .18s;
+  }
+  button:hover{background:var(--thread); color:var(--void)}
+  button:focus-visible{outline:2px solid var(--diamond); outline-offset:3px}
+  button[data-done]{border-color:var(--diamond); color:var(--diamond)}
+
+  @media (prefers-reduced-motion:reduce){
+    .stitch::after{animation:none; transform:scaleX(1)}
+    *{animation-duration:.01ms!important; transition-duration:.01ms!important}
+  }
+</style>
+</head>
+<body>
+
+<div id="game" aria-label="Juego"></div>
+
+<!-- Arranque: visible hasta que Phaser toma el control -->
+<div class="gate" id="boot" data-on>
+  <p class="eyebrow">Autoridad minera</p>
+  <p class="headline">Preparando la expedición</p>
+  <div class="stitch" aria-hidden="true"></div>
+  <p class="meta" id="bootmeta">Cargando equipo insuficiente…</p>
+</div>
+
+<!-- Puerta de móvil: el juego necesita teclado y ratón -->
+<div class="gate" id="mobile" role="alertdialog" aria-labelledby="mtitle">
+  <p class="eyebrow">Autoridad minera</p>
+  <p class="headline" id="mtitle">Esta aventura necesita teclado y mouse</p>
+  <div class="stitch" aria-hidden="true"></div>
+  <p class="body">Para una mejor experiencia, ábrela desde una computadora.</p>
+  <button id="copy" type="button">Copiar el link</button>
+  <p class="meta">Te esperamos. Tenemos tiempo.</p>
+</div>
+
+<script type="module">
+  // La puerta de móvil vive aquí y no en Phaser: si el dispositivo no
+  // sirve, no tiene sentido descargar ni arrancar el motor.
+  const coarse = matchMedia("(pointer:coarse)").matches;
+  const small = Math.min(innerWidth, innerHeight) < 720;
+
+  if (coarse && small) {
+    document.getElementById("boot").removeAttribute("data-on");
+    document.getElementById("mobile").setAttribute("data-on", "");
+
+    const btn = document.getElementById("copy");
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(location.href);
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = location.href;
+        ta.style.cssText = "position:fixed;opacity:0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch { /* se ignora */ }
+        ta.remove();
+      }
+      btn.textContent = "Link copiado";
+      btn.setAttribute("data-done", "");
+    });
+  } else {
+    import("./src/main.ts").catch((err) => {
+      console.error(err);
+      document.getElementById("bootmeta").textContent =
+        "Fallo al cargar. Recarga la página.";
+    });
+  }
+</script>
+</body>
+</html>

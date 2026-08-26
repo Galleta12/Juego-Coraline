@@ -1,0 +1,16 @@
+{
+  "factors": {
+    "backgrounds/forest/forest-far": 0.15,
+    "backgrounds/forest/forest-mid": 0.35,
+    "backgrounds/forest/forest-near": 0.65,
+    "backgrounds/tunnel/tunnel-far": 0.12,
+    "backgrounds/tunnel/tunnel-mid": 0.35,
+    "backgrounds/tunnel/tunnel-near": 0.7,
+    "backgrounds/lair/lair-far": 0.12,
+    "backgrounds/lair/lair-mid": 0.35,
+    "backgrounds/lair/lair-near": 0.65,
+    "backgrounds/forest-altered/forest-altered-far": 0.15,
+    "backgrounds/forest-altered/forest-altered-mid": 0.35,
+    "backgrounds/forest-altered/forest-altered-near": 0.65
+  }
+}

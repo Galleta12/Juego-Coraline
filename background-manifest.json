@@ -1,0 +1,187 @@
+{
+  "pack_name": "Dark Whimsical Background Pack",
+  "version": "1.0",
+  "engine_target": "Phaser 3",
+  "intended_resolution": [
+    1536,
+    640
+  ],
+  "style": "2D dark whimsical / Coraline-Fran Bow-inspired environment art with subtle Snoopy, survival-horror and regional-music easter eggs.",
+  "chroma_key": "#FF00FF",
+  "usage_notes": {
+    "parallax": "Use far < mid < near scrolling factors. Suggested factors are included per layer.",
+    "tiling": "Treat as horizontal parallax artwork. If visible seams appear, mirror-alternate tiles or use a short crossfade at wrap boundaries.",
+    "altered_forest": "forest-altered-* should replace the matching normal forest layers after the pill/reality-shift event.",
+    "gameplay": "Keep collisions on separate tile/collision layers; these files are visual backgrounds only."
+  },
+  "backgrounds": [
+    {
+      "file": "forest-far.png",
+      "level": "forest",
+      "layer": "far",
+      "parallax_factor": 0.15,
+      "description": "Moonlit distant forest/void layer. Slowest scrolling layer.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "f7c1514794b1d59c4dca7461337785d91c295cee7cfe73ed8c98b8721b5adf6d",
+      "bytes": 1872663
+    },
+    {
+      "file": "forest-mid.png",
+      "level": "forest",
+      "layer": "mid",
+      "parallax_factor": 0.35,
+      "description": "Crooked tree silhouettes with hidden stag and visual easter eggs.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "45c649ce7c3413fca4d0863adaef83225b3644607dc971898e0114a351ee2fc0",
+      "bytes": 1914975
+    },
+    {
+      "file": "forest-near.png",
+      "level": "forest",
+      "layer": "near",
+      "parallax_factor": 0.65,
+      "description": "Foreground roots, undergrowth and small decorative references.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "7502a878935c4520c585d9a2a95c2645bf39dd6225724f76dfd928d824ad33df",
+      "bytes": 1609294
+    },
+    {
+      "file": "tunnel-far.png",
+      "level": "tunnel",
+      "layer": "far",
+      "parallax_factor": 0.12,
+      "description": "Cueva de cristal: perspectiva profunda y luz al fondo.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "c767e3d0546886a79c7f84f84e9b295039cb72a709c02599bbbd1a27f14abe8b",
+      "bytes": 2023688
+    },
+    {
+      "file": "tunnel-mid.png",
+      "level": "tunnel",
+      "layer": "mid",
+      "parallax_factor": 0.35,
+      "description": "Cueva de cristal: perspectiva profunda y luz al fondo.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "1203327a134b08e0b62e156d34ba4907fefb5f30b4b85c20f3c35f6fd051412c",
+      "bytes": 2358028
+    },
+    {
+      "file": "tunnel-near.png",
+      "level": "tunnel",
+      "layer": "near",
+      "parallax_factor": 0.7,
+      "description": "Cueva de cristal: perspectiva profunda y luz al fondo.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "58c13a8fb908bd0d17e4e95c6797bc912a709f96987dd7aca67aa077a6e33730",
+      "bytes": 2069326
+    },
+    {
+      "file": "lair-far.png",
+      "level": "lair",
+      "layer": "far",
+      "parallax_factor": 0.1,
+      "description": "Boss arena hall with cold violet window light.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "bf56068c4e60d69fc57c18b51979b0fd0903ad33f1ed2640ec3e64837dce91c4",
+      "bytes": 1517608
+    },
+    {
+      "file": "lair-mid.png",
+      "level": "lair",
+      "layer": "mid",
+      "parallax_factor": 0.3,
+      "description": "Thread/cobweb network with buttons and subtle easter eggs.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "476aed5a1603b1fd4be3e92543b0a41a39b708de06d314537a86babcaf8fea8b",
+      "bytes": 1716909
+    },
+    {
+      "file": "lair-near.png",
+      "level": "lair",
+      "layer": "near",
+      "parallax_factor": 0.65,
+      "description": "Foreground web/fabric framing, leaving the arena readable.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "57d30294570f290732d1cc226fa35939ea1fcd5d57c47200457ee20ea4c59e63",
+      "bytes": 1225354
+    },
+    {
+      "file": "forest-altered-far.png",
+      "level": "forest-altered",
+      "layer": "far",
+      "parallax_factor": 0.15,
+      "description": "Corrupted version of forest far layer with eye-moon palette shift.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "016499bd81ac8a50e6f97a639a80ba4ed4da23412d0da698264f7cd88ba98f21",
+      "bytes": 2138949
+    },
+    {
+      "file": "forest-altered-mid.png",
+      "level": "forest-altered",
+      "layer": "mid",
+      "parallax_factor": 0.35,
+      "description": "Corrupted tree layer with buttons/threads and altered stag.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "0e0e8b27b594a2501ff5a9c771e28d4e867f90b4c890382ab9a17cb77d8699f9",
+      "bytes": 2064491
+    },
+    {
+      "file": "forest-altered-near.png",
+      "level": "forest-altered",
+      "layer": "near",
+      "parallax_factor": 0.65,
+      "description": "Corrupted foreground roots, stitched forms and button-like details.",
+      "dimensions": [
+        1942,
+        809
+      ],
+      "mode": "RGB",
+      "sha256": "18eecd6a554dfebcd1c170380dba076b4e8e895ba3be3e7e8e43997ec9b65059",
+      "bytes": 2021487
+    }
+  ]
+}

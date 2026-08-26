@@ -1,0 +1,34 @@
+{
+  "name": "expedicion-diamante",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mini juego web: una expedicion minera cuestionablemente profesional.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "assets": "python scripts/process_assets.py && python scripts/process_backgrounds.py && python scripts/process_tiles.py && python scripts/process_extras.py && python scripts/process_sheets.py && python scripts/process_coffee.py && python scripts/process_screens.py",
+    "qa": "node scripts/qa.mjs",
+    "anims": "python scripts/check_anims.py",
+    "qa:forest": "node scripts/qa_forest.mjs",
+    "qa:endgame": "node scripts/qa_endgame.mjs",
+    "qa:all": "node scripts/qa.mjs && node scripts/qa_drop.mjs && node scripts/qa_forest.mjs && node scripts/qa_endgame.mjs",
+    "qa:drop": "node scripts/qa_drop.mjs",
+    "extras": "python scripts/process_extras.py",
+    "shots": "node scripts/shots.mjs"
+  },
+  "dependencies": {
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "puppeteer-core": "^23.11.1",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

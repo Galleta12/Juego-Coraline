@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.vercel/
+.netlify/
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+
+# capturas de QA y material de trabajo
+*.png
+!public/**/*.png
+.playwright-mcp/
+_incoming/
+_legacy/
+qa-shots/
