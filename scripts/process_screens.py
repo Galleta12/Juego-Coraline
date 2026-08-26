@@ -71,10 +71,12 @@ TRIM_EDGES = {
 WHOLE = {
     "selection_personaje.png": "screens/select",
     "nombre_image.png": "screens/name-bg",
-    # El NO ya no viene pintado en la lamina: se borra al procesar (ver
-    # `erase_no_button`) porque ahora es un boton suelto que se aparta
-    # del raton, y necesita salir de la lamina para poder moverse.
-    "nuevo_eleccion_background.png": "screens/choice",
+    # La lamina de eleccion ya llega DIBUJADA SIN el NO, asi que no pasa
+    # por `erase_no_button`: ese paso existia para borrar a posteriori el
+    # cartel que traia pintado la version anterior
+    # (`nuevo_eleccion_background.png`), y un inpaint siempre deja algo
+    # de costura donde el original no tenia nada que reconstruir.
+    "elecciones_nuevo_improved.png": "screens/choice",
     "botton_no.png": "screens/no-button",
     "gertudris_acepta.png": "screens/gertrudis",
     # El tutorial ya no cierra con una sola lamina: son dos, una

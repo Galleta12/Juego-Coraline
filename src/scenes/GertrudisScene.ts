@@ -1,10 +1,10 @@
 import Phaser from "phaser";
-import { GAME_HEIGHT, GAME_WIDTH } from "@/config/game";
+import { GAME_HEIGHT, GAME_WIDTH, SAFE } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
 import { queue } from "@/systems/Art";
 import { audio } from "@/systems/AudioSystem";
-import { fitCover, spark } from "@/ui/Screens";
+import { spark } from "@/ui/Screens";
 
 /**
  * "Buenas elecciones — Gertrudis acepta".
@@ -56,10 +56,12 @@ export class GertrudisScene extends Phaser.Scene {
       duration: 620,
       ease: "Back.easeOut",
     });
-    // Y sigue acercandose despacio mientras esta en pantalla.
+    // Y sigue acercandose despacio mientras esta en pantalla. Muy poco:
+    // el ajuste ya deja la lamina justo dentro del margen seguro, asi
+    // que un acercamiento mayor volveria a comerse el titulo.
     this.tweens.add({
       targets: bg,
-      scale: base * 1.05,
+      scale: base * 1.02,
       duration: 3600,
       delay: 620,
       ease: "Sine.easeInOut",
