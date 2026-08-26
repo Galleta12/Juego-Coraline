@@ -16,3 +16,11 @@ Thumbs.db
 _incoming/
 _legacy/
 qa-shots/
+
+# Fuentes pesadas del arte: no van al repo.
+# `spritesgenerated.rar` son 272 MB y GitHub rechaza cualquier archivo de
+# mas de 100 MB. Lo que el juego necesita son los recortes ya procesados
+# en public/assets/, que si estan versionados; el .rar es material de
+# trabajo y se queda en el disco.
+*.rar
+_incoming/
