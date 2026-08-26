@@ -17,15 +17,47 @@ import { audio } from "@/systems/AudioSystem";
  * No se puede saltar ninguna. El corte va pegado a la musica y
  * adelantar una lamina lo descuadra.
  *
- * Antes de esto habia una pantalla de letras sobre negro contando lo
- * mismo. Estas laminas lo cuentan mejor y ademas estan dibujadas.
+ * ── Por que esto NO es un pase de diapositivas ────────────────────────
+ *
+ * Antes lo parecia, y por dos motivos concretos:
+ *
+ *   1. Cada lamina se fundia a NEGRO del todo antes de que entrara la
+ *      siguiente. Ese hueco en negro entre imagen e imagen es
+ *      exactamente lo que hace un PowerPoint.
+ *   2. Las cuatro se movian igual: mismo acercamiento, misma curva
+ *      `Sine.easeInOut` — que arranca despacio y FRENA al final. Una
+ *      imagen que frena se lee como una diapositiva que ya llego a su
+ *      sitio.
+ *
+ * Ahora se encadenan — la nueva entra por encima mientras la anterior
+ * se va, sin negro de por medio — y cada una tiene su propio recorrido:
+ * una se acerca, otra se aleja, otra baja, otra sube. Y el movimiento va
+ * a velocidad CONSTANTE (`Linear`) de principio a fin, incluso durante
+ * el cruce: mientras algo sigue moviendose, el ojo lo lee como una
+ * camara y no como una foto puesta en pantalla.
  */
 
 const BEATS = ["screens/beat-1", "screens/beat-2", "screens/beat-3", "screens/beat-4"];
 
-/** Lo que se queda cada lamina en pantalla. */
-const HOLD_MS = 3400;
-const FADE_MS = 750;
+/** Lo que se queda cada lamina, ya sin contar el cruce. */
+const HOLD_MS = 3000;
+/** Lo que dura el cruce de una lamina a la siguiente. */
+const CROSS_MS = 900;
+
+/**
+ * El recorrido de camara de cada lamina.
+ *
+ * `from`/`to` son multiplicadores del tamaño de ajuste, y `dx`/`dy` el
+ * desplazamiento total en pixeles. Van a contrapelo unos de otros a
+ * proposito: dos acercamientos seguidos, aunque sean lentos, se leen
+ * como el mismo efecto repetido.
+ */
+const MOVES = [
+  { from: 1.0, to: 1.13, dx: -30, dy: 6 }, // se acerca, derivando a la izquierda
+  { from: 1.15, to: 1.02, dx: 26, dy: -8 }, // se aleja, abriendo el plano
+  { from: 1.02, to: 1.14, dx: 8, dy: 22 }, // se acerca bajando
+  { from: 1.1, to: 1.22, dx: -10, dy: -26 }, // sube al cielo
+] as const;
 
 export class FinaleScene extends Phaser.Scene {
   constructor() {
@@ -47,102 +79,171 @@ export class FinaleScene extends Phaser.Scene {
   }
 
   private async run(): Promise<void> {
+    // Motas y resplandor viven fuera de las laminas y NO se reinician
+    // entre una y otra: son el ambiente de toda la secuencia. Antes se
+    // creaban y destruian con cada lamina, y ese corte del ambiente
+    // marcaba el cambio todavia mas.
+    this.ambience();
+
+    let previous: Phaser.GameObjects.Image | null = null;
     for (const [i, key] of BEATS.entries()) {
-      await this.beat(key, i);
+      previous = await this.beat(key, i, previous);
     }
 
+    // La ultima se queda un momento a solas antes del corte.
+    await this.wait(400);
+    if (previous) {
+      this.tweens.add({ targets: previous, alpha: 0, duration: 600 });
+    }
     cutTo(this, S.Choice, { fadeMs: 700 });
   }
 
-  /** Una lamina: entra, respira con su ambiente, y se va. */
-  private beat(key: string, index: number): Promise<void> {
+  /**
+   * Una lamina. Entra encima de la anterior y la releva.
+   *
+   * Devuelve su imagen para que la siguiente sepa a quien tiene que ir
+   * apagando mientras ella aparece.
+   */
+  private beat(
+    key: string,
+    index: number,
+    previous: Phaser.GameObjects.Image | null,
+  ): Promise<Phaser.GameObjects.Image | null> {
     return new Promise((resolve) => {
       if (!this.textures.exists(key)) {
-        resolve();
+        resolve(previous);
         return;
       }
 
       // Cabiendo entera, no cubriendo.
       //
-      // Antes iba con `fitCover`, que llena la pantalla recortando lo
-      // que sobra por los lados. Estas cuatro laminas son 16:9 casi
-      // exacto, igual que el juego, asi que en un monitor normal no se
-      // notaba — pero el lienzo va en modo ENVELOP y en uno mas ancho
-      // recorta hasta 44px arriba y abajo, y el texto de estas cartas
-      // vive cerca del borde: se comia una linea entera. Con margen de
-      // sobra la lamina entera cabe siempre, texto incluido.
+      // El lienzo va en modo ENVELOP y en un monitor ancho recorta hasta
+      // 44 px arriba y abajo; el texto de estas cartas vive cerca del
+      // borde y se perdia una linea entera. Con margen cabe siempre.
+      //
+      // El margen es algo mayor que antes (0.86 en vez de 0.9) porque
+      // ahora las laminas se acercan hasta un 22%: sin ese aire de mas,
+      // el propio movimiento las sacaria del area segura.
       const img = this.add
         .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, key)
-        .setDepth(10)
+        .setDepth(10 + index)
         .setAlpha(0);
-      const fit = Math.min(GAME_WIDTH / img.width, GAME_HEIGHT / img.height) * 0.9;
-      img.setScale(fit);
-      const base = fit;
+      const fit = Math.min(GAME_WIDTH / img.width, GAME_HEIGHT / img.height) * 0.86;
 
-      // La ultima es el cielo azul: su ambiente es claro y frio, y las
-      // tres primeras son de interior con luz de vela.
-      const warm = index < 3;
-      const tint = warm ? 0xffb35c : 0xbfe4ff;
+      const move = MOVES[index] ?? MOVES[0];
+      img.setScale(fit * move.from);
+      img.setPosition(GAME_WIDTH / 2 - move.dx / 2, GAME_HEIGHT / 2 - move.dy / 2);
 
-      const glow = this.add
-        .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, tint, 0)
-        .setOrigin(0)
-        .setDepth(11)
-        .setBlendMode(Phaser.BlendModes.ADD);
-
-      const bits: Phaser.GameObjects.GameObject[] = [img, glow];
-
-      // Motas subiendo, del color de la lamina.
-      const dust = this.time.addEvent({
-        delay: 150,
-        loop: true,
-        callback: () => {
-          const x = Math.random() * GAME_WIDTH;
-          const p = this.add
-            .circle(x, GAME_HEIGHT + 10, 1.5 + Math.random() * 3, tint, 0.55)
-            .setDepth(12)
-            .setBlendMode(Phaser.BlendModes.ADD);
-          bits.push(p);
-          this.tweens.add({
-            targets: p,
-            y: -20,
-            x: x + (Math.random() - 0.5) * 150,
-            alpha: 0,
-            duration: 3600 + Math.random() * 2800,
-            onComplete: () => p.destroy(),
-          });
-        },
-      });
-
-      this.tweens.add({ targets: img, alpha: 1, duration: FADE_MS });
-      // Acercamiento lento: la camara se mete en el dibujo.
+      // El recorrido dura TODO lo que la lamina esta en pantalla, cruces
+      // incluidos, y a velocidad constante: nunca llega a pararse, que
+      // es lo que la separa de una diapositiva.
       this.tweens.add({
         targets: img,
-        scale: base * 1.06,
-        duration: HOLD_MS + FADE_MS,
-        ease: "Sine.easeInOut",
-      });
-      this.tweens.add({
-        targets: glow,
-        fillAlpha: 0.12,
-        duration: 1800,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
+        scale: fit * move.to,
+        x: GAME_WIDTH / 2 + move.dx / 2,
+        y: GAME_HEIGHT / 2 + move.dy / 2,
+        duration: CROSS_MS * 2 + HOLD_MS,
+        ease: "Linear",
       });
 
-      this.time.delayedCall(FADE_MS + HOLD_MS, () => {
-        dust.remove();
+      // El cruce: esta aparece mientras la anterior se va, a la vez.
+      this.tweens.add({ targets: img, alpha: 1, duration: CROSS_MS, ease: "Sine.easeInOut" });
+      if (previous) {
+        const old = previous;
         this.tweens.add({
-          targets: bits,
+          targets: old,
           alpha: 0,
-          duration: FADE_MS,
-          onComplete: () => {
-            for (const b of bits) b.destroy();
-            resolve();
-          },
+          duration: CROSS_MS,
+          ease: "Sine.easeInOut",
+          // Se destruye al terminar de irse, no antes: mientras se cruza
+          // tiene que seguir viendose por debajo de la nueva.
+          onComplete: () => old.destroy(),
         });
-      });
+      }
+
+      // Un destello suave en el relevo, como el fogonazo de un proyector
+      // al cambiar de rollo. Marca el compas sin cortar nada.
+      if (index > 0) {
+        this.cameras.main.flash(360, 255, 240, 210, true);
+        audio.sfx.whoosh();
+      }
+
+      this.time.delayedCall(CROSS_MS + HOLD_MS, () => resolve(img));
     });
+  }
+
+  /**
+   * Ambiente continuo: motas y un latido de luz sobre todo.
+   *
+   * Se monta una sola vez para la secuencia entera. El color va del
+   * calido de las tres primeras laminas — interior, luz de vela — al
+   * frio de la ultima, que es cielo abierto, y ese viraje acompaña al
+   * cambio de tono sin que haya que cortar nada.
+   */
+  private ambience(): void {
+    const glow = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0xffb35c, 0)
+      .setOrigin(0)
+      .setDepth(40)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: glow,
+      fillAlpha: 0.11,
+      duration: 1900,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Del ambar al azul, justo cuando entra la ultima lamina.
+    const tint = { r: 255, g: 179, b: 92 };
+    this.tweens.add({
+      targets: tint,
+      r: 191,
+      g: 228,
+      b: 255,
+      delay: (CROSS_MS + HOLD_MS) * 3,
+      duration: CROSS_MS,
+      onUpdate: () => {
+        glow.setFillStyle(
+          Phaser.Display.Color.GetColor(Math.round(tint.r), Math.round(tint.g), Math.round(tint.b)),
+          glow.fillAlpha,
+        );
+      },
+    });
+
+    this.time.addEvent({
+      delay: 150,
+      loop: true,
+      callback: () => {
+        const x = Math.random() * GAME_WIDTH;
+        const p = this.add
+          .circle(
+            x,
+            GAME_HEIGHT + 10,
+            1.5 + Math.random() * 3,
+            Phaser.Display.Color.GetColor(
+              Math.round(tint.r),
+              Math.round(tint.g),
+              Math.round(tint.b),
+            ),
+            0.55,
+          )
+          .setDepth(41)
+          .setBlendMode(Phaser.BlendModes.ADD);
+        this.tweens.add({
+          targets: p,
+          y: -20,
+          x: x + (Math.random() - 0.5) * 150,
+          alpha: 0,
+          duration: 3600 + Math.random() * 2800,
+          onComplete: () => p.destroy(),
+        });
+      },
+    });
+  }
+
+  private wait(ms: number): Promise<void> {
+    return new Promise((r) => this.time.delayedCall(ms, r));
   }
 }

@@ -12,6 +12,7 @@ import {
   DEFAULT_SKIN,
   getState,
   isCoffeeActive,
+  refill,
   setState,
 } from "@/systems/GameState";
 import { Input } from "@/systems/Input";
@@ -975,6 +976,16 @@ export class BossScene extends Phaser.Scene {
     if (this.finished) return;
     this.finished = true;
     audio.sfx.die();
+
+    // La torta se rellena ANTES de reiniciar, igual que en los niveles.
+    //
+    // Sin esto la pelea volvia a empezar con la vida a cero: el primer
+    // golpe la mataba otra vez y no habia forma de salir del bucle mas
+    // que recargando la pagina. Los niveles ya lo hacian; a la guarida
+    // se le habia quedado sin poner.
+    refill();
+    this.hud?.refresh();
+
     this.cameras.main.fadeOut(700, 40, 4, 20);
     this.time.delayedCall(800, () => this.scene.restart());
   }
