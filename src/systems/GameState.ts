@@ -43,7 +43,6 @@ export interface GameState {
   /** El gag del creeper del NO y el aviso del guia solo pasan una vez. */
   triedNo: boolean;
   guideBlockedYes: boolean;
-  leonUsed: boolean;
   onionWarningShown: boolean;
 
   checkpoint: SceneKey;
@@ -78,7 +77,6 @@ const INITIAL: GameState = {
   acceptedMission: false,
   triedNo: false,
   guideBlockedYes: false,
-  leonUsed: false,
   onionWarningShown: false,
   checkpoint: S.Tutorial,
   sessionId: freshSession(),

@@ -4,7 +4,7 @@ import { COFFEE, GAME_HEIGHT, GAME_WIDTH, HEALTH, TILE } from "@/config/game";
 import { INK } from "@/config/palette";
 import { S } from "@/config/scenes";
 import { BOSS_TXT } from "@/config/strings";
-import { ALLY, CAT_ART, CELEBRATION, DOG, GUIDE, HERO_POSES, ITEM, WEAPON, heroKey, queue } from "@/systems/Art";
+import { CAT_ART, CELEBRATION, DOG, GUIDE, HERO_POSES, ITEM, WEAPON, heroKey, queue } from "@/systems/Art";
 import { audio } from "@/systems/AudioSystem";
 import {
   clock,
@@ -42,8 +42,10 @@ import type { HudScene } from "@/scenes/HudScene";
  * chiste es que hay que esquivarlas, y el remate es que devolverlas de
  * un disparo es lo que la tumba.
  *
- * A media vida aparece Leon una unica vez y descarga unos tiros. Es un
- * regalo, no una mecanica: no hay que ganarselo ni administrarlo.
+ * Se pelea sola de principio a fin. Antes, a media vida, aparecia un
+ * totem que traia a Leon a descargar unos tiros y le quitaba a la jefa
+ * un cuarto de la vida; se quito entero — la pelea se sostiene sin esa
+ * ayuda y sin el rodeo de cruzar la sala a buscarlo.
  */
 /**
  * Camara de la pelea.
@@ -68,8 +70,6 @@ export class BossScene extends Phaser.Scene {
   private boss!: Boss;
 
   private onions: Onion[] = [];
-  private totem: Phaser.GameObjects.Container | null = null;
-  private totemBeam: Phaser.GameObjects.Rectangle | null = null;
   private guide!: Guide;
   private cat!: Cat;
   private webs: { x: number; y: number; radius: number; gfx: Phaser.GameObjects.Graphics }[] = [];
@@ -97,7 +97,6 @@ export class BossScene extends Phaser.Scene {
       ...HERO_POSES.map((p) => heroKey(skin, p)),
       ...bossArtKeys(),
       ...onionArtKeys(),
-      ...Object.values(ALLY),
       ...Object.values(DOG),
       ...Object.values(GUIDE),
       ...Object.values(CAT_ART),
@@ -125,8 +124,6 @@ export class BossScene extends Phaser.Scene {
     this.started = false;
     this.finished = false;
     this.slowUntil = 0;
-    this.totem = null;
-    this.totemBeam = null;
 
     setState({ checkpoint: S.Boss, hasFinalKey: false });
 
@@ -578,204 +575,6 @@ export class BossScene extends Phaser.Scene {
     );
   }
 
-  /**
-   * El totem de Leon.
-   *
-   * A media vida aparece lejos de la jugadora, con un haz de luz que se
-   * ve desde el otro lado del recinto. Hay que ir hasta el — cruzando la
-   * pelea — y entonces Leon entra y se lleva un cuarto de la vida de la
-   * Otra Madre.
-   *
-   * Es una decision, no un regalo automatico: ir a por el cuesta pasar
-   * por delante de la jefa.
-   */
-  private raiseTotem(): void {
-    if (this.totem || getState().leonUsed) return;
-
-    // Lo mas lejos posible de la jugadora, dentro del recinto.
-    const w = this.terrain.widthPx;
-    const x = this.player.x < w / 2 ? w - 190 : 190;
-    const y = this.terrain.heightPx - TILE * 2;
-
-    const root = this.add.container(x, y).setDepth(18);
-
-    // Pedestal.
-    const base = this.add.rectangle(0, -8, 78, 18, 0x3a2a1e).setStrokeStyle(2, 0xffcf6a, 0.7);
-    const column = this.add.rectangle(0, -46, 46, 70, 0x4a3524).setStrokeStyle(2, 0xffcf6a, 0.6);
-    // Y encima, la cara de Leon.
-    //
-    // Se recorta el tercio superior del sprite — donde esta la cabeza —
-    // y se pinta sobre un marco claro. Antes se metia el personaje
-    // entero encogido dentro de un rectangulo y no se distinguia nada.
-    const tex = this.textures.get(ALLY.idle).getSourceImage() as HTMLImageElement;
-    const faceH = Math.round(tex.height * 0.34);
-    const frame = this.add
-      .rectangle(0, -110, 104, 116, 0xf0e0c0, 0.16)
-      .setStrokeStyle(3, 0xffcf6a, 0.95);
-    const face = this.add
-      .image(0, -110, ALLY.idle)
-      .setCrop(0, 0, tex.width, faceH)
-      .setOrigin(0.5, 0)
-      .setScale(96 / tex.width);
-    face.setY(-110 - (faceH * (96 / tex.width)) / 2);
-    root.add([base, column, frame, face]);
-
-    // Haz de luz hasta arriba: es lo que lo hace visible desde lejos.
-    const beam = this.add
-      .rectangle(x, y - 300, 40, 600, 0xffcf6a, 0.13)
-      .setDepth(6)
-      .setBlendMode(Phaser.BlendModes.ADD);
-    light(this, x, y - 90, { color: 0xffcf6a, radius: 230, intensity: 0.4 });
-
-    root.setScale(0).setAlpha(0);
-    // Sonido propio: fanfarria corta para que se sepa que ha aparecido
-    // aunque este al otro lado del recinto.
-    audio.sfx.totem();
-    flash(this, 0xffcf6a, 260);
-    impactRing(this, x, y - 60, 0xffcf6a, 210);
-    this.tweens.add({
-      targets: root,
-      scale: 1,
-      alpha: 1,
-      duration: 620,
-      ease: "Back.easeOut",
-    });
-    this.tweens.add({
-      targets: beam,
-      scaleX: 1.35,
-      duration: 1400,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
-
-    this.totem = root;
-    this.totemBeam = beam;
-
-    this.hud?.announce("TÓTEM DE LEON", "Ve hasta él", 3000, 0xffcf6a);
-    this.hud?.setObjective("Ve al tótem de Leon");
-    void this.guide.say(BOSS_TXT.leonHurry);
-  }
-
-  /** Se comprueba cada frame: llegar al totem lo activa. */
-  private checkTotem(): void {
-    if (!this.totem || getState().leonUsed) return;
-    if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.totem.x, this.totem.y) > 90) {
-      return;
-    }
-    this.useTotem();
-  }
-
-  private useTotem(): void {
-    setState({ leonUsed: true });
-
-    const tx = this.totem?.x ?? this.player.x;
-    const ty = this.totem?.y ?? this.player.y;
-
-    audio.sfx.uiConfirm();
-    flash(this, 0xffcf6a, 320);
-    impactRing(this, tx, ty - 80, 0xffcf6a, 260);
-    burstAt(this, tx, ty - 80, 26, 0xffcf6a);
-
-    this.totemBeam?.destroy();
-    this.totemBeam = null;
-    const gone = this.totem;
-    this.totem = null;
-    if (gone) {
-      this.tweens.add({
-        targets: gone,
-        alpha: 0,
-        scaleY: 1.4,
-        y: gone.y - 40,
-        duration: 500,
-        onComplete: () => gone.destroy(),
-      });
-    }
-
-    void this.guide.say(BOSS_TXT.leonCall);
-    this.hud?.announce(BOSS_TXT.leonUnlocked, "10 segundos", 2600, 0xffe9a8);
-    this.hud?.setObjective("Leon dispara — aprovecha");
-    this.spawnLeon(tx, ty);
-  }
-
-  /**
-   * Leon entra y descarga durante diez segundos.
-   *
-   * Le baja exactamente un cuarto de la vida total. Ni mas — el ultimo
-   * cuarto tiene que bajarlo ella — ni menos, para que se note que ha
-   * servido de algo.
-   */
-  private spawnLeon(x: number, y: number): void {
-    const ally = this.add
-      .sprite(x, y, ALLY.appear1)
-      .setOrigin(0.5, 1)
-      .setScale(0.5)
-      .setDepth(19);
-
-    const a = this.anims;
-    const make = (key: string, keys: readonly string[], rate: number, repeat: number) => {
-      if (a.exists(key)) return;
-      a.create({ key, frames: keys.map((k) => ({ key: k })), frameRate: rate, repeat });
-    };
-    make("ally-appear", [ALLY.appear1, ALLY.appear2, ALLY.idle], 8, 0);
-    make("ally-shoot", [ALLY.shoot, ALLY.shoot2, ALLY.shoot, ALLY.idle], 12, 0);
-    make("ally-leave", [ALLY.disappear], 1, 0);
-
-    ally.play("ally-appear");
-    audio.sfx.dogArrive();
-
-    // El objetivo: dejarla en un cuarto de vida justo.
-    //
-    // Se dispara exactamente una bala por punto de vida que hay que
-    // quitar. Con mas balas de las necesarias se pasaba de largo,
-    // porque las que ya iban por el aire seguian impactando despues de
-    // que dejara de disparar.
-    const floor = Math.ceil(BOSS.maxHp * 0.25);
-    const shots = Math.max(1, this.boss.health - floor);
-    const gap = 10_000 / shots;
-
-    for (let i = 0; i < shots; i++) {
-      this.time.delayedCall(600 + i * gap, () => {
-        if (!ally.active || this.boss.isDead) return;
-        // Deja de disparar al llegar al cuarto.
-        //
-        // El dano lo hacen sus balas al impactar, no un guion aparte:
-        // sumando las dos cosas Leon se la llevaba entera y el ultimo
-        // cuarto — que tiene que bajarlo ella — no llegaba a existir.
-        if (this.boss.health <= floor) return;
-
-        ally.play("ally-shoot", true);
-        audio.sfx.leonShot();
-
-        const from = { x: ally.x, y: ally.y - 46 };
-        const angle = Phaser.Math.Angle.Between(
-          from.x,
-          from.y,
-          this.boss.x,
-          this.boss.y - this.boss.displayHeight * 0.55,
-        );
-        this.bullets.fire(from.x, from.y, angle);
-      });
-    }
-
-    this.time.delayedCall(11_000, () => {
-      // Si algo fallo, se asegura de dejarla en el cuarto exacto.
-      while (this.boss.health > floor && !this.boss.isDead) this.boss.hit(1, false);
-      ally.play("ally-leave", true);
-      this.tweens.add({
-        targets: ally,
-        alpha: 0,
-        y: ally.y - 30,
-        duration: 600,
-        onComplete: () => ally.destroy(),
-      });
-      if (!this.boss.isDead) {
-        this.hud?.setObjective("El último cuarto es tuyo");
-        void this.guide.say(BOSS_TXT.lastQuarter);
-      }
-    });
-  }
-
   /* ── Ataques ─────────────────────────────────────────────────────── */
 
   /**
@@ -1019,9 +818,6 @@ export class BossScene extends Phaser.Scene {
     if (this.started && !this.boss.isDead) {
       this.boss.tick(this.player, () => this.hurtPlayer(BOSS.contactDamage, this.boss.x));
 
-      // A media vida sube el totem; llegar hasta el trae a Leon.
-      if (this.boss.health <= BOSS.maxHp * 0.5) this.raiseTotem();
-      this.checkTotem();
     }
 
     // Luna solo acompaña, y solo hasta que se marcha.

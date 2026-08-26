@@ -91,6 +91,9 @@ export class ChoiceScene extends Phaser.Scene {
   private busy = false;
   /** El empujon del "fijate que hubiera pasado" sale una vez y ya. */
   private scolded = false;
+  /** El texto del empujon mientras esta en pantalla, para poder cortarlo. */
+  private scoldText: Phaser.GameObjects.Text | null = null;
+  private scoldTween: Phaser.Tweens.Tween | null = null;
 
   /**
    * Si ya vio la escenita del NO EN ESTA PARTIDA.
@@ -119,6 +122,8 @@ export class ChoiceScene extends Phaser.Scene {
   async create(): Promise<void> {
     this.busy = false;
     this.scolded = false;
+    this.scoldText = null;
+    this.scoldTween = null;
     this.sawNoScene = false;
     this.dodges = 0;
     this.nextDodgeAt = 0;
@@ -229,26 +234,44 @@ export class ChoiceScene extends Phaser.Scene {
       .setDepth(60)
       .setAlpha(0);
     t.setShadow(0, 3, "#0a0710", 8, true, true);
+    this.scoldText = t;
 
     // Un empujon al cartel del NO para que quede claro de que habla.
     glowPulse(this, this.noSpot, INK.blood);
 
-    this.tweens.add({
+    this.scoldTween = this.tweens.add({
       targets: t,
       alpha: 1,
       y: GAME_HEIGHT * 0.21,
       duration: 340,
       hold: 2100,
       yoyo: true,
-      onComplete: () => {
-        audio.duckMusic(false, 400);
-        t.destroy();
-        this.busy = false;
-      },
+      onComplete: () => this.endScold(),
     });
   }
 
+  /** Retira el empujon y devuelve el control. Idempotente. */
+  private endScold(): void {
+    if (!this.scoldText) return;
+    this.scoldTween?.remove();
+    this.scoldTween = null;
+    this.scoldText.destroy();
+    this.scoldText = null;
+    audio.duckMusic(false, 400);
+    this.busy = false;
+  }
+
   private pressNo(): void {
+    // El empujon en pantalla NO puede bloquear el NO.
+    //
+    // El mensaje dice literalmente "fijate que hubiera pasado si le
+    // dabas al no", y mientras estaba puesto la escena se marcaba como
+    // ocupada durante casi tres segundos: el clic en el NO — justo lo
+    // que acababa de pedir — se descartaba, y habia que esperar a que el
+    // texto se fuera y volver a pulsar. Ahora el clic corta el empujon y
+    // sigue de largo, que es lo que la jugadora esta pidiendo.
+    if (this.scoldText) this.endScold();
+
     if (this.busy) return;
 
     // Solo se puede pulsar la PRIMERA vez. A partir de ahi el boton se

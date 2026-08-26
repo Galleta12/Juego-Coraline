@@ -297,16 +297,6 @@ class AudioSystem {
     onionSplat: () => this.noise(0.22, 0.14, 900, 200),
 
     /* aliados y objetos */
-    /** Aparicion del totem: tres notas que suben. Se oye desde lejos. */
-    totem: () => {
-      this.blip(440, 660, 0.22, "triangle", 0.13);
-      setTimeout(() => this.blip(660, 880, 0.22, "triangle", 0.13), 130);
-      setTimeout(() => this.blip(880, 1180, 0.34, "sine", 0.15), 280);
-    },
-    leonShot: () => {
-      this.noise(0.13, 0.2, 3400, 220);
-      this.blip(150, 44, 0.15, "square", 0.11);
-    },
     catMeow: () => {
       this.blip(620, 780, 0.14, "sine", 0.08);
       this.blip(780, 520, 0.18, "sine", 0.07, 0.13);
