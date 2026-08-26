@@ -1,0 +1,33 @@
+# Lo que NO se sube a Vercel.
+#
+# Vercel empaqueta la carpeta entera y la manda tal cual, y aqui viven
+# 1,3 GB de material de trabajo — hojas de arte sin recortar, packs
+# comprimidos, capturas del QA — que no hacen ninguna falta para servir
+# el juego. El primer intento de desplegar fallo justo por eso: uno de
+# esos archivos pasa de los 100 MB que admite Vercel.
+#
+# Lo que el juego necesita ya esta procesado en public/assets/, y de ahi
+# sale el build.
+
+# Fuentes del arte, sin recortar (664 MB).
+_incoming/
+
+# Comprimidos sueltos en la raiz (272 MB el mayor).
+*.rar
+*.zip
+
+# Codigo de versiones anteriores, guardado por si acaso.
+_legacy/
+
+# Capturas de las pruebas automaticas (136 MB).
+qa-shots/
+
+# Pipeline de arte: se corre a mano en local, nunca en el despliegue.
+scripts/
+dev/
+
+# Imagenes fuente en la raiz: las procesadas viven en public/assets/.
+*.png
+
+# El build se regenera en Vercel.
+dist/

@@ -24,3 +24,6 @@ qa-shots/
 # trabajo y se queda en el disco.
 *.rar
 _incoming/
+
+.vercel
+.env*
